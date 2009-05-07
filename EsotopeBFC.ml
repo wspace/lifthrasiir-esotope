@@ -38,36 +38,41 @@ let parse stream =
             let ht = Hashtbl.create 8 in
             let ptr = accum_memops ht 0 in
             let insert_memop k v acc =
-                if v == 0 then acc else AdjustMemory (k, v) :: acc in
+                if v = 0 then acc else AdjustMemory (k, v) :: acc in
             let acc = Hashtbl.fold insert_memop ht acc in
-            if ptr == 0 then
+            if ptr = 0 then
                 parse' acc
             else
                 parse' (MovePointer ptr :: acc)
+
         | Some '.' ->
-            Stream.junk stream; parse' (Output 0 :: acc)
+            Stream.junk stream;
+            parse' (Output 0 :: acc)
+
         | Some ',' ->
-            Stream.junk stream; parse' (Input 0 :: acc)
+            Stream.junk stream;
+            parse' (Input 0 :: acc)
+
         | Some '[' ->
             Stream.junk stream;
-            let nodes = parse' [] in (
-            match Stream.peek stream with
-            | Some ']' ->
-                Stream.junk stream;
-                parse' (While (0, nodes) :: acc)
-            | _ ->
-                failwith "no matching ']'"
-            )
-        | Some ']' | None -> List.rev acc
+            let nodes, eof = parse' [] in
+            if eof then failwith "no matching ']'" else
+            parse' (While (0, nodes) :: acc)
+
+        | Some ']' ->
+            Stream.junk stream;
+            (List.rev acc, false)
+
         | Some _ ->
-            Stream.junk stream; parse' acc
+            Stream.junk stream;
+            parse' acc
+
+        | None ->
+            (List.rev acc, true)
     in
 
-    let nodes = parse' [] in
-    try Stream.empty stream; nodes with Stream.Failure -> failwith "no matching '['"
-
-let parse_string code =
-    parse (Stream.of_string code)
+    let nodes, eof = parse' [] in
+    if not eof then failwith "no matching '['" else nodes
 
 let emit_c nodes =
     let rec emit buf indent nodes =
@@ -98,12 +103,23 @@ let emit_c nodes =
                         uint8_t m[30000], *p = m;\n\
                         int main(void) {\n";
     emit buf "\t" nodes;
-    Printf.bprintf buf "}\n";
-    Buffer.contents buf
+    Printf.bprintf buf "\treturn 0;\n\
+                        }\n";
+    buf
 
-let () =
-    let code = "
-        >+++++++++[<++++++++>-]<.>+++++++[<++++>-]<+.+++++++..+++.>>>++++++++[<++++>-]
-        <.>>>++++++++++[<+++++++++>-]<---.<<<<.+++.------.--------.>>+.
-    " in print_string (emit_c (parse_string code))
+let usage () =
+    let progname = Sys.executable_name in
+    Printf.printf "Esotope Brainfuck compiler (Ocaml edition)\n\
+                   Copyright (c) 2009, Kang Seonghoon.\n\n\
+                   Usage: %s filename\n\
+                  \       %s - (read from stdin)\n" progname progname;
+    exit 1
+
+let main argv =
+    if (Array.length argv) < 2 then usage () else
+    let channel = if argv.(1) = "-" then stdin else open_in argv.(1) in
+    let nodes = parse (Stream.of_channel channel) in
+    Buffer.output_buffer stdout (emit_c nodes)
+
+let _ = main Sys.argv
 

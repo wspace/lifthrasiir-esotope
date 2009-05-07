@@ -3,7 +3,7 @@
 all: esotope-bfc
 
 esotope-bfc: EsotopeBFC.ml
-	ocamlc -o $@ $<
+	ocamlopt -o $@ $<
 
 clean:
 	rm -f esotope-bfc

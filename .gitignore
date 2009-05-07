@@ -1,3 +1,5 @@
 esotope-bfc
 *.cmi
 *.cmo
+*.cmx
+*.o
