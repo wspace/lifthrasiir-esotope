@@ -13,73 +13,61 @@ type 'celltype node =
     | Output of memref
     | While of memref * 'celltype node list
 
-let parse code =
-    let len = String.length code in
-
-    (*
-    let rec parse' i acc =
-        if i >= len then (len, List.rev acc) else
-        match code.[i] with
-        | '+' -> parse' (succ i) (AdjustMemory (0, 1) :: acc)
-        | '-' -> parse' (succ i) (AdjustMemory (0, -1) :: acc)
-        | '>' -> parse' (succ i) (MovePointer 1 :: acc)
-        | '<' -> parse' (succ i) (MovePointer ~-1 :: acc)
-        | '.' -> parse' (succ i) (Output 0 :: acc)
-        | ',' -> parse' (succ i) (Input 0 :: acc)
-        | '[' ->
-            let newi, nodes = parse' (succ i) [] in
-            if newi >= len then failwith "no matching ']'" else
-            parse' (succ newi) (While (0, nodes) :: acc)
-        | ']' -> (i, List.rev acc)
-        | _ -> parse' (succ i) acc
-    in
-    *)
-
-    let rec accum_memops ht i ptr =
-        if i >= len then (len, ptr) else
-
+let parse stream =
+    let rec accum_memops ht ptr =
         let try_find ht k default =
             if Hashtbl.mem ht k then Hashtbl.find ht k else default in
 
-        match code.[i] with
-        | '+' ->
+        match Stream.peek stream with
+        | Some '+' ->
             Hashtbl.replace ht ptr (succ (try_find ht ptr 0));
-            accum_memops ht (succ i) ptr
-        | '-' ->
+            Stream.junk stream; accum_memops ht ptr
+        | Some '-' ->
             Hashtbl.replace ht ptr (pred (try_find ht ptr 0));
-            accum_memops ht (succ i) ptr
-        | '>' ->
-            accum_memops ht (succ i) (succ ptr)
-        | '<' ->
-            accum_memops ht (succ i) (pred ptr)
-        | _ -> (i, ptr)
+            Stream.junk stream; accum_memops ht ptr
+        | Some '>' ->
+            Stream.junk stream; accum_memops ht (succ ptr)
+        | Some '<' ->
+            Stream.junk stream; accum_memops ht (pred ptr)
+        | _ -> ptr
     in
 
-    let rec parse' i acc =
-        if i >= len then (len, List.rev acc) else
-        match code.[i] with
-        | '+' | '-' | '>' | '<' ->
+    let rec parse' acc =
+        match Stream.peek stream with
+        | Some ('+'|'-'|'>'|'<') ->
             let ht = Hashtbl.create 8 in
-            let i, ptr = accum_memops ht i 0 in
+            let ptr = accum_memops ht 0 in
             let insert_memop k v acc =
                 if v == 0 then acc else AdjustMemory (k, v) :: acc in
             let acc = Hashtbl.fold insert_memop ht acc in
             if ptr == 0 then
-                parse' i acc
+                parse' acc
             else
-                parse' i (MovePointer ptr :: acc)
-        | '.' -> parse' (succ i) (Output 0 :: acc)
-        | ',' -> parse' (succ i) (Input 0 :: acc)
-        | '[' ->
-            let newi, nodes = parse' (succ i) [] in
-            if newi >= len then failwith "no matching ']'" else
-            parse' (succ newi) (While (0, nodes) :: acc)
-        | ']' -> (i, List.rev acc)
-        | _ -> parse' (succ i) acc
+                parse' (MovePointer ptr :: acc)
+        | Some '.' ->
+            Stream.junk stream; parse' (Output 0 :: acc)
+        | Some ',' ->
+            Stream.junk stream; parse' (Input 0 :: acc)
+        | Some '[' ->
+            Stream.junk stream;
+            let nodes = parse' [] in (
+            match Stream.peek stream with
+            | Some ']' ->
+                Stream.junk stream;
+                parse' (While (0, nodes) :: acc)
+            | _ ->
+                failwith "no matching ']'"
+            )
+        | Some ']' | None -> List.rev acc
+        | Some _ ->
+            Stream.junk stream; parse' acc
     in
 
-    let lasti, nodes = parse' 0 [] in
-    if lasti < len then failwith "no matching '['" else nodes
+    let nodes = parse' [] in
+    try Stream.empty stream; nodes with Stream.Failure -> failwith "no matching '['"
+
+let parse_string code =
+    parse (Stream.of_string code)
 
 let emit_c nodes =
     let rec emit buf indent nodes =
@@ -117,5 +105,5 @@ let () =
     let code = "
         >+++++++++[<++++++++>-]<.>+++++++[<++++>-]<+.+++++++..+++.>>>++++++++[<++++>-]
         <.>>>++++++++++[<+++++++++>-]<---.<<<<.+++.------.--------.>>+.
-    " in print_string (emit_c (parse code))
+    " in print_string (emit_c (parse_string code))
 
