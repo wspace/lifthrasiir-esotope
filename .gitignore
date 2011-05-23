@@ -1,5 +1,7 @@
-esotope-bfc
+.depend
+esotope
 *.cmi
 *.cmo
 *.cmx
+*.cma
 *.o
