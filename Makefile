@@ -8,12 +8,14 @@ OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC = ocamlyacc
 OCAMLFLAGS = -I src -I src/lang
+LIBS =
 
 BIN = esotope
 SRCS = \
 	src/EsotopeCommon.ml \
 	src/lang/LangBrainfuck.ml \
 	src/lang/LangText.ml \
+	src/lang/LangHQ9plus.ml \
 	src/lang/LangOok_lexer.ml \
 	src/lang/LangOok.ml \
 	src/Esotope.ml
@@ -33,7 +35,7 @@ OBJS = $(patsubst %.ml,%.o,$(SRCS))
 all: $(BIN)
 
 $(BIN): $(EXES)
-	$(OCAMLOPT) $(OCAMLFLAGS) -o $(BIN) $(EXES)
+	$(OCAMLOPT) $(OCAMLFLAGS) -o $(BIN) $(LIBS) $(EXES)
 	strip $(BIN)
 
 %.cmi: %.mli

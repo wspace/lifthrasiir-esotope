@@ -16,9 +16,6 @@
  directly connected to the reader will produce a byte-identical result.
 ***************************************************************************)
 
-(**************************************************************************)
-(* The AST and kind. *)
-
 type ('memref, 'celltype) node =
     | Nop
     | AdjustMemory of 'memref * 'celltype
@@ -29,6 +26,9 @@ type ('memref, 'celltype) node =
     | While of 'memref * ('memref, 'celltype) node list
     | Breakpoint                (* "#" *)
     | Comment of string
+
+(**************************************************************************)
+(* The kind. *)
 
 type t = (int,int) node list
 let kind = object
@@ -51,9 +51,9 @@ let reader = object
                     | Some ch when f ch ->
                         Stream.junk stream;
                         Buffer.add_char buf ch;
-                        collect()
+                        collect ()
                     | _ -> ()
-                in collect(); Buffer.contents buf
+                in collect (); Buffer.contents buf
             in
 
             match Stream.peek stream with
