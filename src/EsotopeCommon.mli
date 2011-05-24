@@ -75,6 +75,23 @@ and virtual ['t] source : 't kind -> object
 end
 
 (**************************************************************************)
+(* Built-in kinds. *)
+
+(* A kind for character stream. *)
+type stream_type = char Stream.t
+val stream_kind : stream_type kind
+
+(* A kind for character buffer. Since it is normally an output kind, its
+ * type does not directly represent a buffer, but a function that writes to
+ * given buffer. *)
+type buffer_type = Buffer.t -> unit
+val buffer_kind : buffer_type kind
+
+(* A (sort-of-a) kind for forcing the execution. *)
+type interp_type = unit
+val interp_kind : interp_type kind
+
+(**************************************************************************)
 (* Processors. *)
 
 (* A base class for processor. Analogous to sink_base and source_base. *)
@@ -100,6 +117,26 @@ class virtual ['src,'dest] processor : 'src kind -> 'dest kind -> object
     method virtual process : 'src -> 'dest
 end
 
+(* Stream reader. It is a special case of processor and should read the code
+ * from given stream. *)
+class virtual ['dest] reader : 'dest kind -> object
+    inherit [stream_type,'dest] processor
+end
+
+(* Stream writer. It is a special case of processor and should emit the data
+ * into given buffer. Note that the process method returns an another
+ * function, which receives the output buffer and writes to it. *)
+class virtual ['src] writer : 'src kind -> object
+    inherit ['src,buffer_type] processor
+end
+
+(* Interpreter. It is a special case of processor and should execute given
+ * code. It entirely relies on the side effect, and its result is actually
+ * a unit. *)
+class virtual ['src] interpreter : 'src kind -> object
+    inherit ['src,interp_type] processor
+end
+
 (**************************************************************************)
 (* Lookup interface and driver. *)
 
@@ -111,15 +148,4 @@ val lookup_proc : kind_base -> kind_base -> processor_base
 
 (* The connection driver. *)
 val run : 'src -> 'src kind -> processor_base list -> 'dest kind -> 'dest
-
-(**************************************************************************)
-(* Built-in kinds. *)
-
-(* A kind for character stream. *)
-type stream_type = char Stream.t
-val stream_kind : stream_type kind
-
-(* A (sort-of-a) kind for forcing the execution. *)
-type interp_type = unit
-val interp_kind : interp_type kind
 

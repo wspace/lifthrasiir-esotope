@@ -25,7 +25,10 @@ let parse_args =
 let _ =
     let result = parse_args in
     let chan = if result.fromfile = "-" then stdin else open_in result.fromfile in
+    let stream = Stream.of_channel chan in
     let procs = [lookup_proc stream_kind LangBrainfuck.code_kind;
-                 lookup_proc LangBrainfuck.code_kind interp_kind] in
-    run (Stream.of_channel chan) stream_kind procs interp_kind
+                 lookup_proc LangBrainfuck.code_kind buffer_kind] in
+    let buf = Buffer.create 1024 in
+    (run stream stream_kind procs buffer_kind : buffer_type) buf;
+    Buffer.output_buffer stdout buf
 

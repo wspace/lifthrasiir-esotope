@@ -49,6 +49,27 @@ and virtual ['t] source outkind = object
 end
 
 (**************************************************************************)
+(* Built-in kinds. *)
+
+type stream_type = char Stream.t
+let stream_kind = object
+    inherit [stream_type] kind
+    method name = "stream"
+end
+
+type buffer_type = Buffer.t -> unit
+let buffer_kind = object
+    inherit [buffer_type] kind
+    method name = "buffer"
+end
+
+type interp_type = unit
+let interp_kind = object
+    inherit [interp_type] kind
+    method name = "interp"
+end
+
+(**************************************************************************)
 (* Processors. *)
 
 let processors = Hashtbl.create 8
@@ -85,6 +106,18 @@ class virtual ['src,'dest] processor inkind outkind = object (self)
                             (self :> processor_base)
 end
 
+class virtual ['dest] reader outkind = object
+    inherit [stream_type,'dest] processor stream_kind outkind
+end
+
+class virtual ['src] writer inkind = object
+    inherit ['src,buffer_type] processor inkind buffer_kind
+end
+
+class virtual ['src] interpreter inkind = object
+    inherit ['src,interp_type] processor inkind interp_kind
+end
+
 (**************************************************************************)
 (* Lookup interface and driver. *)
 
@@ -110,19 +143,4 @@ let run data srckind procs destkind =
             destkind#connect first (final :> sink_base);
             match !result with Some x -> x | None -> failwith "unexpected"
     in connect (initial :> source_base) procs
-
-(**************************************************************************)
-(* Built-in kinds. *)
-
-type stream_type = char Stream.t
-let stream_kind = object
-    inherit [stream_type] kind
-    method name = "stream"
-end
-
-type interp_type = unit
-let interp_kind = object
-    inherit [interp_type] kind
-    method name = "interp"
-end
 
