@@ -1,3 +1,24 @@
+(* This is a part of Esotope. See README for more information. *)
+
+(***************************************************************************
+ LangBrainfuck
+
+ This module implements the Brainfuck programming language, designed by
+ Urban Müller in 1993. This is a starting point of many esolang enthusiasts,
+ and also a crucial point in Esotope (as many other languages implement the
+ reduction from/into Brainfuck).
+ 
+ The actual language implemented here is trivially reducible, but not
+ identical, to Brainfuck; every memory-referencing commands may refer the
+ remote memory location using a relative address. This format makes an
+ initial part of the optimization trivial, though the reader itself does
+ not perform the optimization unless requested. Therefore the writer
+ directly connected to the reader will produce a byte-identical result.
+***************************************************************************)
+
+(**************************************************************************)
+(* AST. *)
+
 type ('memref, 'celltype) node =
     | Nop
     | AdjustMemory of 'memref * 'celltype
@@ -6,6 +27,8 @@ type ('memref, 'celltype) node =
     | Input of 'memref
     | Output of 'memref
     | While of 'memref * ('memref, 'celltype) node list
+    | Breakpoint                (* "#" *)
+    | Comment of string
 
 type code_type = (int,int) node list
 let code_kind = object
@@ -13,75 +36,178 @@ let code_kind = object
     method name = "brainfuck"
 end
 
+(**************************************************************************)
+(* The code reader. *)
+
 let reader = object
     inherit [code_type] EsotopeCommon.reader code_kind
 
     method process stream =
-        let rec accum_memops ht ptr =
-            let try_find ht k default =
-                if Hashtbl.mem ht k then Hashtbl.find ht k else default in
+        let rec parse acc =
+            let collect_run f =
+                let buf = Buffer.create 1 in
+                let rec collect _ =
+                    match Stream.peek stream with
+                    | Some ch when f ch ->
+                        Stream.junk stream;
+                        Buffer.add_char buf ch;
+                        collect()
+                    | _ -> ()
+                in collect(); Buffer.contents buf
+            in
 
             match Stream.peek stream with
+            (* we do compress a run of identical commands, but we don't
+             * compress a run of different commands even when we can do.
+             * the compression is handled by the separate optimization. *)
             | Some '+' ->
-                Hashtbl.replace ht ptr (succ (try_find ht ptr 0));
-                Stream.junk stream; accum_memops ht ptr
+                let delta = String.length (collect_run (fun ch -> ch = '+')) in
+                parse (AdjustMemory (0, delta) :: acc)
             | Some '-' ->
-                Hashtbl.replace ht ptr (pred (try_find ht ptr 0));
-                Stream.junk stream; accum_memops ht ptr
+                let delta = String.length (collect_run (fun ch -> ch = '-')) in
+                parse (AdjustMemory (0, -delta) :: acc)
             | Some '>' ->
-                Stream.junk stream; accum_memops ht (succ ptr)
+                let delta = String.length (collect_run (fun ch -> ch = '>')) in
+                parse (MovePointer delta :: acc)
             | Some '<' ->
-                Stream.junk stream; accum_memops ht (pred ptr)
-            | _ -> ptr
-        in
-
-        let rec parse' acc =
-            match Stream.peek stream with
-            | Some ('+'|'-'|'>'|'<') ->
-                let ht = Hashtbl.create 8 in
-                let ptr = accum_memops ht 0 in
-                let insert_memop k v acc =
-                    if v = 0 then acc else AdjustMemory (k, v) :: acc in
-                let acc = Hashtbl.fold insert_memop ht acc in
-                if ptr = 0 then
-                    parse' acc
-                else
-                    parse' (MovePointer ptr :: acc)
+                let delta = String.length (collect_run (fun ch -> ch = '<')) in
+                parse (MovePointer (-delta) :: acc)
 
             | Some '.' ->
                 Stream.junk stream;
-                parse' (Output 0 :: acc)
-
+                parse (Output 0 :: acc)
             | Some ',' ->
                 Stream.junk stream;
-                parse' (Input 0 :: acc)
+                parse (Input 0 :: acc)
 
             | Some '[' ->
                 Stream.junk stream;
-                let nodes, eof = parse' [] in
+                let nodes, eof = parse [] in
                 if eof then failwith "no matching ']'" else
-                parse' (While (0, nodes) :: acc)
-
+                parse (While (0, nodes) :: acc)
             | Some ']' ->
                 Stream.junk stream;
                 (List.rev acc, false)
-
-            | Some _ ->
-                Stream.junk stream;
-                parse' acc
-
             | None ->
                 (List.rev acc, true)
+
+            (* no matter whether we recognize this command, we parse it anyway.
+             * it is equivalent to Comment "#" when ignored. *)
+            | Some '#' ->
+                Stream.junk stream;
+                parse (Breakpoint :: acc)
+
+            | Some _ ->
+                let notcmd ch = not (String.contains "+-><.,[]#" ch) in
+                parse (Comment (collect_run notcmd) :: acc)
         in
 
-        let nodes, eof = parse' [] in
-        if not eof
-            then failwith "no matching '['"
-            else nodes
+        let nodes, eof = parse [] in
+        if not eof then
+            failwith "no matching '['"
+        else
+            nodes
 end
+
+(**************************************************************************)
+(* The interpreter. *)
+
+let interpreter = object
+    inherit [code_type] EsotopeCommon.interpreter code_kind
+    method weight = 47
+
+    method process nodes =
+        (* TODO until we can specify options for the individual processor,
+         * we implement the interpreter with only one particular parameter. *)
+        let inchan = stdin in
+        let outchan = stdout in
+        let mem = Array.make 30000 0 in
+        let ptr = ref 0 in
+        let normalize x = if x < 0 then 256 + (x mod 256) else x mod 256 in
+        let rec exec nodes =
+            let exec_node = function
+                | AdjustMemory (ref, delta) ->
+                    mem.(!ptr + ref) <- normalize (mem.(!ptr + ref) + delta)
+                | SetMemory (ref, value) ->
+                    mem.(!ptr + ref) <- normalize value
+                | MovePointer offset ->
+                    ptr := !ptr + offset
+                | Input ref ->
+                    begin
+                        try mem.(!ptr + ref) <- int_of_char (input_char inchan)
+                        with End_of_file -> ()
+                    end
+                | Output ref ->
+                    output_char outchan (char_of_int mem.(!ptr + ref));
+                    flush outchan
+                | While (ref, nodes) ->
+                    while mem.(!ptr + ref) <> 0 do exec nodes done
+                | Breakpoint -> (* TODO *)
+                    prerr_endline "Breakpoint reached."
+                | Nop | Comment _ -> ()
+            in List.iter exec_node nodes
+        in exec nodes
+end
+
+(**************************************************************************)
+(* The code writer. *)
 
 let writer = object
     inherit [code_type] EsotopeCommon.writer code_kind
+
+    method process nodes buf =
+        let emit_dir plus minus v =
+            if v > 0 then
+                Buffer.add_string buf (String.make v plus)
+            else if v < 0 then
+                Buffer.add_string buf (String.make (-v) minus)
+            else
+                ()
+        in
+
+        let rec emit nodes =
+            let emit_node = function
+                | Nop -> ()
+                | AdjustMemory (ref, delta) ->
+                    emit_dir '>' '<' ref; (* empty when ref=0 *)
+                    emit_dir '+' '-' delta;
+                    emit_dir '<' '>' ref (* back up *)
+                | SetMemory (ref, value) ->
+                    emit_dir '>' '<' ref;
+                    Buffer.add_string buf "[-]"; emit_dir '+' '-' value;
+                    emit_dir '<' '>' ref
+                | MovePointer offset ->
+                    emit_dir '>' '<' offset
+                | Input ref ->
+                    emit_dir '>' '<' ref;
+                    Buffer.add_char buf ',';
+                    emit_dir '<' '>' ref
+                | Output ref ->
+                    emit_dir '>' '<' ref;
+                    Buffer.add_char buf '.';
+                    emit_dir '<' '>' ref
+                | While (ref, nodes) ->
+                    (* this is safe even when the pointer is updated. *)
+                    emit_dir '>' '<' ref; Buffer.add_char buf '[';
+                    emit_dir '<' '>' ref; emit nodes; emit_dir '>' '<' ref;
+                    Buffer.add_char buf ']'; emit_dir '<' '>' ref
+                | Breakpoint ->
+                    Buffer.add_char buf '#'
+                | Comment s ->
+                    Buffer.add_string buf s
+            in List.iter emit_node nodes
+        in
+
+        emit nodes
+end
+
+(**************************************************************************)
+(* The basic Brainfuck-to-C translater. *)
+
+(* TODO
+let to_c = object
+    inherit [code_type, LangC.code_type] EsotopeCommon.processor
+        code_kind LangC.code_kind
 
     method process nodes buf =
         let rec emit' indent nodes =
@@ -101,6 +227,10 @@ let writer = object
                     Printf.bprintf buf "%swhile (p[%d]) {\n" indent target;
                     emit' (indent ^ "\t") nodes;
                     Printf.bprintf buf "%s}\n" indent
+                | Breakpoint ->
+                    Printf.bprintf buf "%s/* breakpoint */\n" indent
+                | Comment s ->
+                    Printf.bprintf buf "%s/* comment: %s */\n" indent s
             in
             List.iter (emit_single_node indent) nodes
         in
@@ -114,4 +244,5 @@ let writer = object
         Printf.bprintf buf "\treturn 0;\n\
                             }\n"
 end
+*)
 

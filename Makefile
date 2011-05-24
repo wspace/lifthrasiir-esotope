@@ -1,6 +1,6 @@
 .PHONY: all
 
-.SUFFIXES: .ml .mli .cmi .cmo
+.SUFFIXES: .ml .mli .cmi .cmo .cmx
 
 OCAMLC = ocamlc
 OCAMLOPT = ocamlopt
@@ -22,16 +22,13 @@ $(BIN): $(EXES)
 	$(OCAMLOPT) $(OCAMLFLAGS) -o $(BIN) $(EXES)
 	strip $(BIN)
 
-%.cmo %.cmi: %.ml
-	$(OCAMLC) $(OCAMLFLAGS) -c $<
+%.cmi: %.mli
+	$(OCAMLOPT) $(OCAMLFLAGS) -c $<
 
 %.cmx: %.ml
 	$(OCAMLOPT) $(OCAMLFLAGS) -c $<
 
 src/EsotopeCommon.cmx: src/EsotopeCommon.cmi
-
-src/EsotopeCommon.cmi: src/EsotopeCommon.mli
-	$(OCAMLOPT) $(OCAMLFLAGS) -c $<
 
 clean:
 	rm -f $(BIN) $(INTFS) $(OBJS) $(EXES)
