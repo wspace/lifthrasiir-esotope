@@ -17,7 +17,7 @@
 ***************************************************************************)
 
 (**************************************************************************)
-(* AST. *)
+(* The AST and kind. *)
 
 type ('memref, 'celltype) node =
     | Nop
@@ -30,9 +30,9 @@ type ('memref, 'celltype) node =
     | Breakpoint                (* "#" *)
     | Comment of string
 
-type code_type = (int,int) node list
-let code_kind = object
-    inherit [code_type] EsotopeCommon.kind
+type t = (int,int) node list
+let kind = object
+    inherit [t] EsotopeCommon.kind
     method name = "brainfuck"
 end
 
@@ -40,7 +40,7 @@ end
 (* The code reader. *)
 
 let reader = object
-    inherit [code_type] EsotopeCommon.reader code_kind
+    inherit [t] EsotopeCommon.reader kind
 
     method process stream =
         let rec parse acc =
@@ -113,8 +113,7 @@ end
 (* The interpreter. *)
 
 let interpreter = object
-    inherit [code_type] EsotopeCommon.interpreter code_kind
-    method weight = 47
+    inherit [t] EsotopeCommon.interpreter kind
 
     method process nodes =
         (* TODO until we can specify options for the individual processor,
@@ -153,7 +152,7 @@ end
 (* The code writer. *)
 
 let writer = object
-    inherit [code_type] EsotopeCommon.writer code_kind
+    inherit [t] EsotopeCommon.writer kind
 
     method process nodes buf =
         let emit_dir plus minus v =
@@ -206,8 +205,7 @@ end
 
 (* TODO
 let to_c = object
-    inherit [code_type, LangC.code_type] EsotopeCommon.processor
-        code_kind LangC.code_kind
+    inherit [t, LangC.t] EsotopeCommon.processor kind LangC.kind
 
     method process nodes buf =
         let rec emit' indent nodes =
