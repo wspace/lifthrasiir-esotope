@@ -80,7 +80,7 @@ let interpreter = object
             | CheckRead ch ->
                 fun x cont ->
                     begin match !currentch with
-                    | Some ch -> exec (App (x,I)) cont
+                    | Some ch' when ch = ch' -> exec (App (x,I)) cont
                     | _ -> exec (App (x,Void)) cont
                     end
             | Reprint ->
