@@ -67,7 +67,7 @@ let interpreter = object
                     cont x
             | Exit ->
                 (* ignore the current continutation *)
-                fun x cont -> failwith "End"
+                fun x cont -> x
             | Read ->
                 fun x cont ->
                     begin try
@@ -109,7 +109,7 @@ let writer = object
     method process node buf =
         let put = Buffer.add_char buf in
         let put0 ch = () in
-        let put0 ch = put ch in (* useful for debugging *)
+        (*let put0 ch = put ch in (* useful for debugging *)*)
         let rec emit = function
             | K -> put 'k'
             | K1 x -> put0 '('; put '`'; put 'k'; put0 ')'; emit x

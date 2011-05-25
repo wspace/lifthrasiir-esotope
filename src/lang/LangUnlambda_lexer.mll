@@ -5,6 +5,7 @@ open LangUnlambda_parser
 
 rule token = parse
     | [' ' '\t' '\r' '\n']+ { token lexbuf }
+    | '#' [^ '#' '\r' '\n']* { token lexbuf }
     | '`' { APP }
     | ['K' 'k'] { K }
     | ['S' 's'] { S }
