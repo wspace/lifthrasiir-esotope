@@ -47,6 +47,17 @@ and virtual source_base : object
     method virtual output_kind : kind_base
 end
 
+(* A base class for processor. Analogous to sink_base and source_base. *)
+class virtual processor_base : object
+    inherit sink_base
+    inherit source_base
+
+    (* The weight used for automatic connection; the connection path with
+     * minimal sum of total weights is used. (Therefore it cannot be
+     * negative.) The default weight is 10. *)
+    method weight : int
+end
+
 (**************************************************************************)
 (* Implementations for kind, sink and source. *)
 
@@ -94,17 +105,6 @@ val interp_kind : interp_type kind
 (**************************************************************************)
 (* Processors. *)
 
-(* A base class for processor. Analogous to sink_base and source_base. *)
-class virtual processor_base : object
-    inherit sink_base
-    inherit source_base
-
-    (* The weight used for automatic connection; the connection path with
-     * minimal sum of total weights is used. (Therefore it cannot be
-     * negative.) The default weight is 10. *)
-    method weight : int
-end
-
 (* Implementation for processor. *)
 class virtual ['src,'dest] processor : 'src kind -> 'dest kind -> object
     inherit processor_base
@@ -140,11 +140,18 @@ end
 (**************************************************************************)
 (* Lookup interface and driver. *)
 
-(* Searches the kind for given name. *)
+(* Searches the kind for given name. Raises Not_found if there is no such
+ * kind. *)
 val lookup_kind : string -> kind_base
 
-(* Searches the processor for given input and output kind. *)
+(* Searches the processor for given input and output kind. Raises Not_found
+ * if there is no such processor. *)
 val lookup_proc : kind_base -> kind_base -> processor_base
+
+(* Automatically builds the connection of processors with minimal sum of
+ * weights. Raises Not_found if there exists no path that connects two given
+ * kinds. *)
+val find_procs : kind_base -> kind_base -> processor_base list
 
 (* The connection driver. *)
 val run : 'src -> 'src kind -> processor_base list -> 'dest kind -> 'dest

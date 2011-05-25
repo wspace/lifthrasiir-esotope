@@ -7,9 +7,9 @@ OCAMLOPT = ocamlopt
 OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC = ocamlyacc
-OCAMLFLAGS = -I src -I src/lang
+OCAMLFLAGS = -I src -I src/lang -I +ocamlgraph
 OCAMLCFLAGS = $(OCAMLFLAGS) -rectypes
-LIBS =
+LIBS = graph.cmxa
 
 BIN = esotope
 SRCS = \

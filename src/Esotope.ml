@@ -3,28 +3,44 @@
 open EsotopeCommon
 
 type cmdflags =
-    {mutable fromkind: string;
-     mutable tokind: string;
-     mutable fromfile: string;
-     mutable tofile: string option}
+    {mutable fromkind : string;
+     mutable tokind : string;
+     mutable fromfile : string;
+     mutable tofile : string option;
+     mutable verbose : bool}
 
 let parse_args =
     let result = {fromkind = "auto";
                   tokind = "interp";
                   fromfile = "-";
-                  tofile = None} in
+                  tofile = None;
+                  verbose = false} in
     Arg.parse [("-f", Arg.String (fun x -> result.fromkind <- x),
                 "Language translated from.");
                ("-t", Arg.String (fun x -> result.tokind <- x),
                 "Language translated into.");
                ("-r", Arg.Unit (fun _ -> result.tokind <- "interp"),
                 "Run the program immediately.");
+               ("-v", Arg.Unit (fun _ -> result.verbose <- true),
+                "Shows the detailed information about how the code is \
+                 processed.");
                ("-o", Arg.String (fun x -> result.tofile <- Some x),
                 "Output file.")]
               (fun x -> result.fromfile <- x)
               "Esotope: a growing collection of esoteric language \
                implementation.";
     result
+
+let display_procs procs =
+    let num_proc = List.length procs in
+    let sum_weights = List.fold_left (fun w p -> w + p#weight) 0 procs in
+    let first_kind = (List.hd procs)#input_kind#name in
+    let each_proc proc =
+        Printf.sprintf " --(%d)--> %s" proc#weight proc#output_kind#name in
+    let remaining_kinds = String.concat "" (List.map each_proc procs) in
+    Printf.eprintf "Found a path with %d processors (weight=%d): %s%s\n"
+        num_proc sum_weights first_kind remaining_kinds;
+    flush stderr
 
 let _ =
     let result = parse_args in
@@ -34,23 +50,17 @@ let _ =
     let stream = Stream.of_channel chan in
     let fromkind = lookup_kind result.fromkind in
     let tokind = lookup_kind result.tokind in
+    let procs = lookup_proc stream_kind fromkind ::
+                find_procs fromkind tokind in
+    if result.verbose then display_procs procs else ();
     if tokind = interp_kind then
-        let procs = [lookup_proc stream_kind fromkind;
-                     lookup_proc fromkind interp_kind] in
         (run stream stream_kind procs interp_kind : unit)
     else
+        let procs = procs @ [lookup_proc tokind buffer_kind] in
         let outchan =
             match result.tofile with
             | Some s -> open_out_bin s
             | None -> stdout in
-        let procs =
-            if fromkind = tokind then
-                [lookup_proc stream_kind fromkind;
-                 lookup_proc fromkind buffer_kind]
-            else
-                [lookup_proc stream_kind fromkind;
-                 lookup_proc fromkind tokind;
-                 lookup_proc tokind buffer_kind] in
         let buf = Buffer.create 1024 in
         (run stream stream_kind procs buffer_kind : buffer_type) buf;
         Buffer.output_buffer outchan buf

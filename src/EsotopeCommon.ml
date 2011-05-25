@@ -1,5 +1,7 @@
 (* This is a part of Esotope. See README for more information. *)
 
+open Graph
+
 (**************************************************************************)
 (* Base classes. *)
 
@@ -16,10 +18,61 @@ and virtual source_base = object
     method virtual output_kind : kind_base
 end
 
+class virtual processor_base = object
+    inherit sink_base
+    inherit source_base
+
+    method weight = 10 (* default weight *)
+end
+
+(**************************************************************************)
+(* Lookup helpers. *)
+
+let dummy_kind = object
+    inherit kind_base
+    method name = "<dummy>"
+    method connect a b = failwith "should not be called."
+end
+
+let dummy_processor = object
+    inherit processor_base
+    method input_kind = dummy_kind
+    method output_kind = dummy_kind
+end
+
+module V = struct
+    type t = kind_base
+    let equal x y = (x = y)
+    let hash = Hashtbl.hash
+    let compare = compare
+end
+
+module E = struct
+    type t = processor_base
+    let src e = e#input_kind
+    let dst e = e#output_kind
+    let default = dummy_processor
+    let compare = compare
+end
+
+module G = Imperative.Digraph.ConcreteBidirectionalLabeled(V)(E)
+
+module W = struct
+    type label = G.E.label
+    type t = int
+    let weight proc = proc#weight
+    let zero = 0
+    let add = (+)
+    let compare = compare
+end
+
+module Dij = Path.Dijkstra(G)(W)
+
+let proc_graph = G.create ()
+let kinds = Hashtbl.create 8
+
 (**************************************************************************)
 (* Implementations for kind, sink and source. *)
-
-let kinds = Hashtbl.create 8
 
 class virtual ['t] kind = object (self)
     inherit kind_base
@@ -32,6 +85,7 @@ class virtual ['t] kind = object (self)
 
     (* save itself for the later lookup. *)
     initializer Hashtbl.add kinds self#name (self :> kind_base)
+    initializer G.add_vertex proc_graph (self :> kind_base)
 end
 
 and virtual ['t] sink inkind = object
@@ -74,13 +128,6 @@ end
 
 let processors = Hashtbl.create 8
 
-class virtual processor_base = object
-    inherit sink_base
-    inherit source_base
-
-    method weight = 10 (* default weight *)
-end
-
 class virtual ['src,'dest] processor inkind outkind = object (self)
     inherit processor_base
     inherit ['src] sink inkind
@@ -100,10 +147,9 @@ class virtual ['src,'dest] processor inkind outkind = object (self)
     method virtual process : 'src -> 'dest
 
     (* save itself for the later lookup. *)
-    (* TODO should really be hashtbl of hashtbl. *)
-    initializer Hashtbl.add processors
-                            ((inkind :> kind_base), (outkind :> kind_base))
-                            (self :> processor_base)
+    initializer G.add_edge_e proc_graph
+        ((self#input_kind :> kind_base), (self :> processor_base),
+         (self#output_kind :> kind_base))
 end
 
 class virtual ['dest] reader outkind = object
@@ -123,9 +169,14 @@ end
 
 let lookup_kind name = Hashtbl.find kinds name
 
-let lookup_proc inp out = Hashtbl.find processors (inp,out)
+let lookup_proc inp out =
+    let _, proc, _ = G.find_edge proc_graph inp out in proc
 
-let run data srckind procs destkind =
+let find_procs srckind destkind =
+    let path, _ = Dij.shortest_path proc_graph srckind destkind in
+    List.map (fun (_,proc,_) -> proc) path
+
+let run data srckind procs destkind = 
     let result = ref None in
     let initial = object
         inherit ['src] source srckind
