@@ -19,6 +19,7 @@ SRCS = \
 	src/lang/LangHQ9plus.ml \
 	src/lang/LangOok_lexer.ml \
 	src/lang/LangOok.ml \
+	src/lang/LangSpoon.ml \
 	src/lang/LangUnlambda_ast.ml \
 	src/lang/LangUnlambda_parser.ml \
 	src/lang/LangUnlambda_lexer.ml \

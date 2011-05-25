@@ -56,10 +56,9 @@ let reader = object
         let codebuf = Buffer.create 8 in
 
         let rec parse _ =
-            let open LangOok_lexer in
-            match token lexbuf with
+            match LangOok_lexer.token lexbuf with
             | Some first ->
-                begin match token lexbuf with
+                begin match LangOok_lexer.token lexbuf with
                 | Some second ->
                     Buffer.add_char codebuf (ook_to_bf (first,second));
                     parse ()
@@ -73,15 +72,6 @@ let reader = object
         parse ();
         let code = Buffer.contents codebuf in
         LangBrainfuck.reader#process (Stream.of_string code)
-end
-
-(**************************************************************************)
-(* The interpreter. *)
-
-let interpreter = object
-    inherit [t] EsotopeCommon.interpreter kind
-
-    method process = LangBrainfuck.interpreter#process
 end
 
 (**************************************************************************)
@@ -110,6 +100,7 @@ let to_brainfuck = object
     inherit [t, LangBrainfuck.t] EsotopeCommon.processor
         kind LangBrainfuck.kind
 
+    method weight = 5
     method process nodes = nodes
 end
 
@@ -117,6 +108,7 @@ let from_brainfuck = object
     inherit [LangBrainfuck.t, t] EsotopeCommon.processor
         LangBrainfuck.kind kind
 
+    method weight = 5
     method process nodes = nodes
 end
 
