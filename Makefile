@@ -7,14 +7,15 @@ OCAMLOPT = ocamlopt
 OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC = ocamlyacc
-OCAMLFLAGS = -I src -I src/lang -rectypes
+OCAMLFLAGS = -I src -I src/lang
+OCAMLCFLAGS = $(OCAMLFLAGS) -rectypes
 LIBS =
 
 BIN = esotope
 SRCS = \
 	src/EsotopeCommon.ml \
-	src/lang/LangBrainfuck.ml \
 	src/lang/LangText.ml \
+	src/lang/LangBrainfuck.ml \
 	src/lang/LangHQ9plus.ml \
 	src/lang/LangOok_lexer.ml \
 	src/lang/LangOok.ml \
@@ -42,14 +43,14 @@ OBJS = $(patsubst %.ml,%.o,$(SRCS))
 all: $(BIN)
 
 $(BIN): $(EXES)
-	$(OCAMLOPT) $(OCAMLFLAGS) -o $(BIN) $(LIBS) $(EXES)
+	$(OCAMLOPT) $(OCAMLCFLAGS) -o $(BIN) $(LIBS) $(EXES)
 	strip $(BIN)
 
 %.cmi: %.mli
-	$(OCAMLOPT) $(OCAMLFLAGS) -c $<
+	$(OCAMLOPT) $(OCAMLCFLAGS) -c $<
 
 %.cmx: %.ml
-	$(OCAMLOPT) $(OCAMLFLAGS) -c $<
+	$(OCAMLOPT) $(OCAMLCFLAGS) -c $<
 
 %lexer.ml: %lexer.mll
 	$(OCAMLLEX) $<
@@ -58,7 +59,7 @@ $(BIN): $(EXES)
 	$(OCAMLYACC) $<
 
 %parser.mli: %parser.ml
-	$(OCAMLOPT) $(OCAMLFLAGS) -c $*parser.mli
+	$(OCAMLOPT) $(OCAMLCFLAGS) -c $*parser.mli
 
 define INTF_RULE
 $(patsubst %.mli,%.cmx,$(1)): $(patsubst %.mli,%.cmi,$(1))

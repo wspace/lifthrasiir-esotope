@@ -19,9 +19,6 @@ open LangUnlambda_ast
 %token <char> QUO
 %token EOL
 
-%right K S I V D C DOT R E AT PIPE QUO
-%right APP
-
 %start main
 %type <LangUnlambda_ast.t> main
 
@@ -44,14 +41,12 @@ expr:
 | AT { Read }
 | QUO { CheckRead $1 }
 | PIPE { Reprint }
-
-/* these optimizations do not change the source code. the writer will write
- * them as originally read. */
-| APP K expr { K1 $3 }
-| APP S expr { S1 $3 }
-| APP APP S expr expr { S2 ($4,$5) }
-| APP D expr { Delay1 $3 }
-
-| APP expr expr { App ($2,$3) }
+| APP expr expr {
+    (* these optimizations do not change the source code. the writer will
+     * write them as originally read. *)
+    match ($2,$3) with
+    | (Delay, x) -> Delay1 x
+    | (x, y) -> App (x,y)
+  }
 ;
 

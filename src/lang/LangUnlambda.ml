@@ -3,7 +3,16 @@
 (***************************************************************************
  LangUnlambda
 
- working in progress. TODO
+ This module implements the Unlambda programming language, designed by
+ David Madore in 1999. It is a classic esoteric programming language with
+ (impure) functional features, featuring the SKI combinators, continuation
+ and delayed computation. Some, however, regards Unlambda not fully
+ functional language due to the presence of side effects. If you agree on
+ this claim, it would be worthwhile to look at Lazy K instead.
+
+ The current interpreter is straightforward, manually constructed with the
+ continuation-passing style (CPS). "d" function is handled specially during
+ the evaluation.
 ***************************************************************************)
 
 open LangUnlambda_ast
@@ -108,19 +117,16 @@ let writer = object
 
     method process node buf =
         let put = Buffer.add_char buf in
-        let put0 ch = () in
-        (*let put0 ch = put ch in (* useful for debugging *)*)
         let rec emit = function
             | K -> put 'k'
-            | K1 x -> put0 '('; put '`'; put 'k'; put0 ')'; emit x
+            | K1 x -> put '`'; put 'k'; emit x
             | S -> put 's'
-            | S1 x -> put0 '('; put '`'; put 's'; put0 ')'; emit x
-            | S2 (x,y) ->
-                put0 '('; put '`'; put '`'; put 's'; put0 ')'; emit x; emit y
+            | S1 x -> put '`'; put 's'; emit x
+            | S2 (x,y) -> put '`'; put '`'; put 's'; emit x; emit y
             | I -> put 'i'
             | Void -> put 'v'
             | Delay -> put 'd'
-            | Delay1 x -> put0 '('; put '`'; put 'd'; put0 ')'; emit x
+            | Delay1 x -> put '`'; put 'd'; emit x
             | Callcc -> put 'c'
             | Print ch -> put '.'; put ch
             | PrintNewline -> put 'r'
@@ -131,5 +137,24 @@ let writer = object
             | Extern _ -> failwith "Extern node is for internal use only."
             | App (x, y) -> put '`'; emit x; emit y
         in emit node
+end
+
+(**************************************************************************)
+(* The text generator. *)
+
+let from_text = object
+    inherit [LangText.t, t] EsotopeCommon.processor LangText.kind kind
+
+    method process s =
+        if s = "" then
+            Void
+        else
+            let printnode ch =
+                if ch = '\n' then PrintNewline else Print ch in
+            let node = ref (printnode s.[0]) in
+            for i = 1 to (String.length s) - 1 do
+                node := App (!node, printnode s.[i])
+            done;
+            App (!node, Void)
 end
 
