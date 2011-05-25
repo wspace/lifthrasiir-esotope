@@ -7,7 +7,7 @@ OCAMLOPT = ocamlopt
 OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC = ocamlyacc
-OCAMLFLAGS = -I src -I src/lang
+OCAMLFLAGS = -I src -I src/lang -rectypes
 LIBS =
 
 BIN = esotope
@@ -18,12 +18,19 @@ SRCS = \
 	src/lang/LangHQ9plus.ml \
 	src/lang/LangOok_lexer.ml \
 	src/lang/LangOok.ml \
+	src/lang/LangUnlambda_ast.ml \
+	src/lang/LangUnlambda_parser.ml \
+	src/lang/LangUnlambda_lexer.ml \
+	src/lang/LangUnlambda.ml \
 	src/Esotope.ml
 INTFS = \
-	src/EsotopeCommon.mli
+	src/EsotopeCommon.mli \
+	src/lang/LangUnlambda_parser.mli
 LEXERS = \
-	src/lang/LangOok_lexer.mll
-PARSERS =
+	src/lang/LangOok_lexer.mll \
+	src/lang/LangUnlambda_lexer.mll
+PARSERS = \
+	src/lang/LangUnlambda_parser.mly
 
 LEXER_SRCS = $(patsubst %.mll,%.ml,$(LEXERS))
 PARSER_SRCS = $(patsubst %.mly,%.ml,$(PARSERS))
@@ -47,8 +54,11 @@ $(BIN): $(EXES)
 %lexer.ml: %lexer.mll
 	$(OCAMLLEX) $<
 
-%parser.ml %parser.mli: %parser.mly
+%parser.ml: %parser.mly
 	$(OCAMLYACC) $<
+
+%parser.mli: %parser.ml
+	$(OCAMLOPT) $(OCAMLFLAGS) -c $*parser.mli
 
 define INTF_RULE
 $(patsubst %.mli,%.cmx,$(1)): $(patsubst %.mli,%.cmi,$(1))
@@ -59,7 +69,7 @@ clean:
 	rm -f $(BIN) $(CINTFS) $(EXES) $(OBJS) $(LEXER_SRCS) $(PARSER_SRCS) $(PARSER_INTFS)
 
 depend:
-	$(OCAMLDEP) $(OCAMLFLAGS) $(SRCS) > .depend
+	$(OCAMLDEP) $(OCAMLFLAGS) $(SRCS) $(LEXERS) $(PARSERS) > .depend
 
 include .depend
 

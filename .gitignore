@@ -5,3 +5,4 @@ esotope
 *.cmx
 *.cma
 *.o
+*parser.mli
