@@ -24,15 +24,22 @@ SRCS = \
 	src/lang/LangUnlambda_parser.ml \
 	src/lang/LangUnlambda_lexer.ml \
 	src/lang/LangUnlambda.ml \
+	src/lang/LangMinus_ast.ml \
+	src/lang/LangMinus_parser.ml \
+	src/lang/LangMinus_lexer.ml \
+	src/lang/LangMinus.ml \
 	src/Esotope.ml
 INTFS = \
 	src/EsotopeCommon.mli \
-	src/lang/LangUnlambda_parser.mli
+	src/lang/LangUnlambda_parser.mli \
+	src/lang/LangMinus_parser.mli
 LEXERS = \
 	src/lang/LangOok_lexer.mll \
-	src/lang/LangUnlambda_lexer.mll
+	src/lang/LangUnlambda_lexer.mll \
+	src/lang/LangMinus_lexer.mll
 PARSERS = \
-	src/lang/LangUnlambda_parser.mly
+	src/lang/LangUnlambda_parser.mly \
+	src/lang/LangMinus_parser.mly
 
 LEXER_SRCS = $(patsubst %.mll,%.ml,$(LEXERS))
 PARSER_SRCS = $(patsubst %.mly,%.ml,$(PARSERS))
