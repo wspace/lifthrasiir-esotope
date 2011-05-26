@@ -29,14 +29,8 @@ end
 (* The code reader. *)
 
 let reader = object
-    inherit [t] EsotopeCommon.reader kind
-
-    method process stream =
-        (* TODO same problem as LangOok.reader *)
-        let buf = Buffer.create 1024 in
-        Stream.iter (Buffer.add_char buf) stream;
-        let lexbuf = Lexing.from_string (Buffer.contents buf) in
-        LangUnlambda_parser.main LangUnlambda_lexer.token lexbuf
+    inherit [t] EsotopeCommon.parsing_reader kind
+    method process = LangUnlambda_parser.main LangUnlambda_lexer.token
 end
 
 (**************************************************************************)

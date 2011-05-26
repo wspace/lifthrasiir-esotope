@@ -19,5 +19,5 @@ rule token = parse
     | '@' { AT }
     | '|' { PIPE }
     | '?' (_ as ch) { QUO ch }
-    | eof { EOL }
+    | eof { EOF }
 

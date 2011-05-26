@@ -46,13 +46,9 @@ end
 (* The code reader. *)
 
 let reader = object
-    inherit [t] EsotopeCommon.reader kind
+    inherit [t] EsotopeCommon.parsing_reader kind
 
-    method process stream =
-        (* TODO should we use a buffer or a stream? *)
-        let buf = Buffer.create 1024 in
-        Stream.iter (Buffer.add_char buf) stream;
-        let lexbuf = Lexing.from_string (Buffer.contents buf) in
+    method process lexbuf =
         let codebuf = Buffer.create 8 in
 
         let rec parse _ =
@@ -77,13 +73,20 @@ end
 (**************************************************************************)
 (* The code writer. *)
 
+let rec strip_comment = function
+    | LangBrainfuck.While (ref, nodes) ->
+        LangBrainfuck.While (ref, List.map strip_comment nodes)
+    | LangBrainfuck.Breakpoint -> LangBrainfuck.Nop  (* TODO *)
+    | LangBrainfuck.Comment _ -> LangBrainfuck.Nop
+    | node -> node
+
 let writer = object
     inherit [t] EsotopeCommon.writer kind
 
     method process nodes buf =
         (* again, reuse the existing Brainfuck writer. *)
         let buf' = Buffer.create 1024 in
-        LangBrainfuck.writer#process nodes buf';
+        LangBrainfuck.writer#process (List.map strip_comment nodes) buf';
 
         let translate ch =
             match bf_to_ook ch with

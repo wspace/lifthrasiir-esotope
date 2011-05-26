@@ -111,6 +111,13 @@ let stream_kind = object
     method name = "stream"
 end
 
+(* internal use only; users should use parsing_reader instead. *)
+type lexbuf_type = Lexing.lexbuf
+let lexbuf_kind = object
+    inherit [lexbuf_type] kind
+    method name = "lexbuf"
+end
+
 type buffer_type = Buffer.t -> unit
 let buffer_kind = object
     inherit [buffer_type] kind
@@ -156,12 +163,30 @@ class virtual ['dest] reader outkind = object
     inherit [stream_type,'dest] processor stream_kind outkind
 end
 
+class virtual ['dest] parsing_reader outkind = object
+    inherit [lexbuf_type,'dest] processor lexbuf_kind outkind
+    method weight = 9 (* does not penalize the parsing reader over others *)
+end
+
 class virtual ['src] writer inkind = object
     inherit ['src,buffer_type] processor inkind buffer_kind
 end
 
 class virtual ['src] interpreter inkind = object
     inherit ['src,interp_type] processor inkind interp_kind
+end
+
+(**************************************************************************)
+(* Built-in processors. *)
+
+let stream_to_lexbuf = object
+    inherit [stream_type,lexbuf_type] processor stream_kind lexbuf_kind
+
+    method weight = 1
+    method process stream =
+        let buf = Buffer.create 1024 in
+        Stream.iter (Buffer.add_char buf) stream;
+        Lexing.from_string (Buffer.contents buf)
 end
 
 (**************************************************************************)

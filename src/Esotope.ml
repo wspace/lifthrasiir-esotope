@@ -42,6 +42,14 @@ let display_procs procs =
         num_proc sum_weights first_kind remaining_kinds;
     flush stderr
 
+let build_procs fromkind tokind =
+    let procs = find_procs stream_kind fromkind @
+                find_procs fromkind tokind in
+    if tokind = interp_kind then
+        procs
+    else
+        procs @ find_procs tokind buffer_kind
+
 let _ =
     let result = parse_args in
     let chan =
@@ -50,13 +58,11 @@ let _ =
     let stream = Stream.of_channel chan in
     let fromkind = lookup_kind result.fromkind in
     let tokind = lookup_kind result.tokind in
-    let procs = lookup_proc stream_kind fromkind ::
-                find_procs fromkind tokind in
+    let procs = build_procs fromkind tokind in
     if result.verbose then display_procs procs else ();
     if tokind = interp_kind then
         (run stream stream_kind procs interp_kind : unit)
     else
-        let procs = procs @ [lookup_proc tokind buffer_kind] in
         let outchan =
             match result.tofile with
             | Some s -> open_out_bin s

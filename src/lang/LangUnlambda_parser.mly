@@ -17,7 +17,7 @@ open LangUnlambda_ast
 %token AT
 %token PIPE
 %token <char> QUO
-%token EOL
+%token EOF
 
 %start main
 %type <LangUnlambda_ast.t> main
@@ -25,7 +25,7 @@ open LangUnlambda_ast
 %%
 
 main:
-| expr EOL { $1 }
+| expr EOF { $1 }
 ;
 
 expr:

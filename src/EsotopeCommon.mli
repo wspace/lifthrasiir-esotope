@@ -123,6 +123,12 @@ class virtual ['dest] reader : 'dest kind -> object
     inherit [stream_type,'dest] processor
 end
 
+(* Parsing reader. It is a variant of stream reader that uses an ocamllex and
+ * ocamlyacc to parse the code. *)
+class virtual ['dest] parsing_reader : 'dest kind -> object
+    inherit [Lexing.lexbuf,'dest] processor
+end
+
 (* Stream writer. It is a special case of processor and should emit the data
  * into given buffer. Note that the process method returns an another
  * function, which receives the output buffer and writes to it. *)
