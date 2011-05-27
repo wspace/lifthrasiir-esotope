@@ -28,6 +28,7 @@ SRCS = \
 	src/lang/LangMinus_parser.ml \
 	src/lang/LangMinus_lexer.ml \
 	src/lang/LangMinus.ml \
+	src/lang/LangBefunge93.ml \
 	src/Esotope.ml
 INTFS = \
 	src/EsotopeCommon.mli \
