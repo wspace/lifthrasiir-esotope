@@ -7,12 +7,14 @@ OCAMLOPT = ocamlopt
 OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC = ocamlyacc
-OCAMLFLAGS = -I src -I src/lang -I +ocamlgraph
-OCAMLCFLAGS = $(OCAMLFLAGS) -rectypes
+
+DIRS = -I src -I src/lang
+INCS = -I +ocamlgraph
 LIBS = graph.cmxa
 
 BIN = esotope
 SRCS = \
+	src/StreamUtil.ml \
 	src/EsotopeCommon.ml \
 	src/lang/LangText.ml \
 	src/lang/LangBrainfuck.ml \
@@ -31,6 +33,7 @@ SRCS = \
 	src/lang/LangBefunge93.ml \
 	src/Esotope.ml
 INTFS = \
+	src/StreamUtil.mli \
 	src/EsotopeCommon.mli \
 	src/lang/LangUnlambda_parser.mli \
 	src/lang/LangMinus_parser.mli
@@ -48,6 +51,10 @@ PARSER_INTFS = $(patsubst %.mly,%.mli,$(PARSERS))
 CINTFS = $(patsubst %.ml,%.cmi,$(SRCS))
 EXES = $(patsubst %.ml,%.cmx,$(SRCS))
 OBJS = $(patsubst %.ml,%.o,$(SRCS))
+
+OCAMLFLAGS = $(DIRS) $(INCS)
+OCAMLCFLAGS = $(DIRS) $(INCS) -rectypes
+OCAMLDEPFLAGS = $(DIRS)
 
 all: $(BIN)
 
@@ -79,7 +86,7 @@ clean:
 	rm -f $(BIN) $(CINTFS) $(EXES) $(OBJS) $(LEXER_SRCS) $(PARSER_SRCS) $(PARSER_INTFS)
 
 depend:
-	$(OCAMLDEP) $(OCAMLFLAGS) $(SRCS) $(LEXERS) $(PARSERS) > .depend
+	$(OCAMLDEP) $(OCAMLDEPFLAGS) $(SRCS) $(LEXERS) $(PARSERS) > .depend
 
 include .depend
 

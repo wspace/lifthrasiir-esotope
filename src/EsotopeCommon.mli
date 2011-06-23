@@ -88,9 +88,13 @@ end
 (**************************************************************************)
 (* Built-in kinds. *)
 
-(* A kind for character stream. *)
+(* A kind for 8-bit character stream. *)
 type stream_type = char Stream.t
 val stream_kind : stream_type kind
+
+(* A kind for unicode character stream. *)
+type unicode_stream_type = int Stream.t
+val unicode_stream_kind : unicode_stream_type kind
 
 (* A kind for character buffer. Since it is normally an output kind, its
  * type does not directly represent a buffer, but a function that writes to
@@ -121,6 +125,13 @@ end
  * from given stream. *)
 class virtual ['dest] reader : 'dest kind -> object
     inherit [stream_type,'dest] processor
+end
+
+(* Unicode stream reader. It is a variant of stream reader that internally
+ * converts UTF-8-encoded bytes into Unicode code points. Note that there is
+ * no support for other encodings; use iconv instead. *)
+class virtual ['dest] unicode_reader : 'dest kind -> object
+    inherit [unicode_stream_type,'dest] processor
 end
 
 (* Parsing reader. It is a variant of stream reader that uses an ocamllex and
