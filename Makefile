@@ -10,10 +10,11 @@ OCAMLYACC = ocamlyacc
 
 DIRS = -I src -I src/lang
 INCS = -I +ocamlgraph
-LIBS = graph.cmxa
+LIBS = graph.cmxa nums.cmxa
 
 BIN = esotope
 SRCS = \
+	src/ListUtil.ml \
 	src/StreamUtil.ml \
 	src/EsotopeCommon.ml \
 	src/lang/LangText.ml \
@@ -31,8 +32,10 @@ SRCS = \
 	src/lang/LangMinus_lexer.ml \
 	src/lang/LangMinus.ml \
 	src/lang/LangBefunge93.ml \
+	src/lang/LangWhitespace.ml \
 	src/Esotope.ml
 INTFS = \
+	src/ListUtil.mli \
 	src/StreamUtil.mli \
 	src/EsotopeCommon.mli \
 	src/lang/LangUnlambda_parser.mli \

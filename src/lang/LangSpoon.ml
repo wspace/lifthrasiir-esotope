@@ -70,9 +70,8 @@ let reader = object
         in
 
         let rec parse acc =
-            match Stream.peek stream with
+            match StreamUtil.try_next stream with
             | Some (('0'|'1') as ch) ->
-                Stream.junk stream;
                 begin match update (ch = '1') with
                 | Some '+' -> parse (AdjustMemory (0, 1) :: acc)
                 | Some '-' -> parse (AdjustMemory (0, -1) :: acc)
@@ -89,7 +88,7 @@ let reader = object
                 | Some '@' -> parse (Exit :: acc)
                 | Some _ | None -> parse acc
                 end
-            | Some (' '|'\t'|'\r'|'\n') -> Stream.junk stream; parse acc
+            | Some (' '|'\t'|'\r'|'\n') -> parse acc
             | Some _ ->
                 failwith "character other than '0' or '1' encountered."
             | None ->
