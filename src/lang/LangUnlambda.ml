@@ -37,11 +37,9 @@ end
 (* The interpreter. *)
 
 let interpreter = object
-    inherit [t] EsotopeCommon.interpreter kind
+    inherit [t] TextIO.interpreter kind
 
-    method process node =
-        let inchan = stdin in
-        let outchan = stdout in
+    method process node io =
         let currentch = ref None in
         let rec apply = function
             | K -> (fun x cont -> cont (K1 x))
@@ -59,26 +57,17 @@ let interpreter = object
             | Callcc ->
                 (fun x cont -> exec (App (x, Extern (fun _ -> cont))) cont)
             | Print ch ->
-                fun x cont ->
-                    output_char outchan ch;
-                    flush outchan;
-                    cont x
+                fun x cont -> io#put_char ch; io#flush_out (); cont x
             | PrintNewline ->
-                fun x cont ->
-                    output_char outchan '\n';
-                    flush outchan;
-                    cont x
+                fun x cont -> io#put_char '\n'; io#flush_out (); cont x
             | Exit ->
                 (* ignore the current continutation *)
                 fun x cont -> x
             | Read ->
                 fun x cont ->
-                    begin try
-                        currentch := Some (input_char inchan);
-                        exec (App (x,I)) cont
-                    with End_of_file ->
-                        currentch := None;
-                        exec (App (x,Void)) cont
+                    begin match io#get_char None with
+                    | Some c -> currentch := Some c; exec (App (x,I)) cont
+                    | None -> currentch := None; exec (App (x,Void)) cont
                     end
             | CheckRead ch ->
                 fun x cont ->

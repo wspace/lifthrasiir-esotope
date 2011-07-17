@@ -91,17 +91,16 @@ end
 (* The interpreter. *)
 
 let interpreter = object
-    inherit [t] EsotopeCommon.interpreter kind
+    inherit [t] TextIO.interpreter kind
 
-    method process nodes =
-        let chan = stdout in
+    method process nodes io =
         let accum = ref 0 in (* actually useless *)
         let exec_node = function
-            | PrintHello _ -> output_string chan "Hello, world!\n"
+            | PrintHello _ -> io#put_str "Hello, world!\n"
             | PrintItself _ ->
-                let print_node n = output_string chan (stringify n) in
+                let print_node n = io#put_str (stringify n) in
                 List.iter print_node nodes
-            | PrintBeer -> output_string chan beer_song
+            | PrintBeer -> io#put_str beer_song
             | Increment -> incr accum
             | Comment _ -> ()
         in List.iter exec_node nodes

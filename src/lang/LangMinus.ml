@@ -33,9 +33,9 @@ end
 (* The interpreter. *)
 
 let interpreter = object
-    inherit [t] EsotopeCommon.interpreter kind
+    inherit [t] TextIO.interpreter kind
 
-    method process nodes =
+    method process nodes io =
         let memsize = 30000 (* TODO *) in
         let vars = [| 0; 0; 0; 0; 0; 0; 0; 0; 0; 0;
                       0; 0; 0; 0; 0; 0; 0; 0; 0; 0;
@@ -43,8 +43,6 @@ let interpreter = object
         let memory = Array.make (memsize * 2 + 26) 0 in
         memory.(memsize * 2 + 25) <- -1;
 
-        let inchan = stdin in
-        let outchan = stdout in
         let code = Array.of_list nodes in
         let codeptr = ref 0 in
         let memptr = ref 0 in
@@ -57,15 +55,10 @@ let interpreter = object
             | CodePtr -> !codeptr
             | MemPtr -> !memptr
             | InputChar ->
-                begin
-                    try int_of_char (input_char inchan)
-                    with End_of_file -> -1
-                end
+                begin match io#get_code None with Some x -> x | None -> -1 end
             | InputNum ->
-                begin
-                    try Scanf.fscanf inchan "%_[^-0-9]%d" (fun x -> x)
-                    with End_of_file -> 0 (* as C interpreter does *)
-                end
+                (* EOF behavior follows the C interpreter *)
+                begin match io#get_int None with Some x -> x | None -> 0 end
             | Random ->
                 let range = !randrange in
                 if range > 0 then
@@ -87,12 +80,8 @@ let interpreter = object
                 memory.(i) <- memory.(i) - rhs
             | CodePtr -> codeptr := !codeptr - rhs
             | MemPtr -> memptr := !memptr - rhs
-            | OutputChar ->
-                output_char outchan (char_of_int ((-rhs) land 255));
-                flush outchan
-            | OutputNum ->
-                output_string outchan (string_of_int (-rhs));
-                flush outchan
+            | OutputChar -> io#put_code ((-rhs) land 255); io#flush_out ()
+            | OutputNum -> io#put_int (-rhs); io#flush_out ()
             | RandomRange -> randrange := !randrange - rhs
             | _ -> failwith "unexpected"
         in

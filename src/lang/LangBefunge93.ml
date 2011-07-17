@@ -74,15 +74,13 @@ end
 (* The interpreter. *)
 
 let interpreter = object
-    inherit [t] EsotopeCommon.interpreter kind
+    inherit [t] TextIO.interpreter kind
 
-    method process code =
+    method process code io =
         let code = Array.map Array.copy code in
         let nrows = Array.length code in
         let ncolumns = Array.length code.(0) in
 
-        let inchan = stdin in
-        let outchan = stdout in
         let delta = ref (1,0) in
         let stack = ref [] in
 
@@ -143,14 +141,8 @@ let interpreter = object
                 | ':' -> let a = get () in stack := a :: a :: !stack
                 | '\\' -> let b, a = get2 () in stack := a :: b :: !stack
                 | '$' -> ignore (get ())
-                | '.' ->
-                    let a = get () in
-                    Printf.fprintf outchan "%d " a;
-                    flush outchan
-                | ',' ->
-                    let a = get () in
-                    output_char outchan (char_of_int (a land 255));
-                    flush outchan
+                | '.' -> io#put_int (get ()); io#put_char ' '; io#flush_out ()
+                | ',' -> io#put_code (get () land 255); io#flush_out ()
                 | 'p' ->
                     let ty, tx = get2 () in
                     let v = get () in
@@ -165,18 +157,13 @@ let interpreter = object
                     else
                         stack := 0 :: !stack
                 | '&' ->
-                    begin try
-                        Scanf.fscanf inchan "%_[^0-9]%d"
-                            (fun x -> stack := x :: !stack)
-                    with End_of_file ->
-                        stack := 0 :: !stack
-                    end
+                    let x =
+                        match io#get_nat None with Some x -> x | None -> 0
+                    in stack := x :: !stack
                 | '~' ->
-                    begin try
-                        stack := int_of_char (input_char inchan) :: !stack
-                    with End_of_file ->
-                        stack := -1 :: !stack
-                    end
+                    let c =
+                        match io#get_code None with Some x -> x | None -> -1
+                    in stack := c :: !stack
                 | _ -> ()
                 end;
                 exec (advance (x,y))

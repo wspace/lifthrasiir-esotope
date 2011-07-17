@@ -198,53 +198,8 @@ let stream_to_unicode = object
 
     method weight = 1
     method process stream =
-        let is_remainder c = '\128' <= c && c < '\192' in
-
-        let read_remaining chk f v =
-            match StreamUtil.try_next stream with
-            | Some c when chk c ->
-                f ((v lsl 6) lor (int_of_char c land 63))
-            | _ -> raise Invalid_utf8_sequence in
-
-        let read_remaining_one =
-            read_remaining is_remainder (fun v -> Some v) in
-        let read_remaining_two =
-            read_remaining is_remainder read_remaining_one in
-        let read_remaining_three =
-            read_remaining is_remainder read_remaining_two in
-
-        let read_one c = Some (int_of_char c) in
-        let read_two c =
-            read_remaining_one (int_of_char c land 31) in
-        let read_three c =
-            read_remaining_two (int_of_char c land 15) in
-        let read_three_overlong c =
-            read_remaining (fun c' -> '\160' <= c' && c' < '\192')
-                read_remaining_one (int_of_char c land 15) in
-        let read_four c =
-            read_remaining_three (int_of_char c land 7) in
-        let read_four_overlong c =
-            read_remaining (fun c' -> '\144' <= c' && c' < '\192')
-                read_remaining_two (int_of_char c land 7) in
-        let read_four_out_of_range c =
-            read_remaining (fun c' -> '\128' <= c' && c' < '\144')
-                read_remaining_two (int_of_char c land 7) in
-
-        let read _ =
-            match StreamUtil.try_next stream with
-            | Some c ->
-                begin match c with
-                | '\000'..'\127' -> read_one c
-                | '\194'..'\223' -> read_two c
-                | '\224'         -> read_three_overlong c
-                | '\225'..'\239' -> read_three c
-                | '\240'         -> read_four_overlong c
-                | '\241'..'\243' -> read_four c
-                | '\244'         -> read_four_out_of_range c
-                | _              -> raise Invalid_utf8_sequence
-                end
-            | None -> None
-        in Stream.from read
+        let getc _ = StreamUtil.try_next stream in
+        Stream.from (fun _ -> UnicodeUtil.get_utf8 getc)
 end
 
 let stream_to_lexbuf = object

@@ -8,7 +8,7 @@ OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC = ocamlyacc
 
-DIRS = -I src -I src/lang
+DIRS = -I src -I src/io -I src/lang
 INCS = -I +ocamlgraph
 LIBS = graph.cmxa nums.cmxa
 
@@ -16,7 +16,9 @@ BIN = esotope
 SRCS = \
 	src/ListUtil.ml \
 	src/StreamUtil.ml \
+	src/UnicodeUtil.ml \
 	src/EsotopeCommon.ml \
+	src/io/TextIO.ml \
 	src/lang/LangText.ml \
 	src/lang/LangBrainfuck.ml \
 	src/lang/LangHQ9plus.ml \
@@ -37,7 +39,9 @@ SRCS = \
 INTFS = \
 	src/ListUtil.mli \
 	src/StreamUtil.mli \
+	src/UnicodeUtil.mli \
 	src/EsotopeCommon.mli \
+	src/io/TextIO.mli \
 	src/lang/LangUnlambda_parser.mli \
 	src/lang/LangMinus_parser.mli
 LEXERS = \

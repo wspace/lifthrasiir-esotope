@@ -29,10 +29,8 @@ let reader = object
 end
 
 let interpreter = object
-    inherit [t] EsotopeCommon.interpreter kind
-    method process s =
-        output_string stdout s;
-        flush stdout
+    inherit [t] TextIO.interpreter kind
+    method process s io = io#put_str s; io#flush_out ()
 end
 
 let writer = object

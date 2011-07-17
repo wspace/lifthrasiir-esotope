@@ -113,13 +113,9 @@ end
 (* The interpreter. *)
 
 let interpreter = object
-    inherit [t] EsotopeCommon.interpreter kind
+    inherit [t] TextIO.interpreter kind
 
-    method process nodes =
-        (* TODO until we can specify options for the individual processor,
-         * we implement the interpreter with only one particular parameter. *)
-        let inchan = stdin in
-        let outchan = stdout in
+    method process nodes io =
         let mem = Array.make 30000 0 in
         let ptr = ref 0 in
         let normalize x = if x < 0 then 256 + (x mod 256) else x mod 256 in
@@ -132,13 +128,12 @@ let interpreter = object
                 | MovePointer offset ->
                     ptr := !ptr + offset
                 | Input ref ->
-                    begin
-                        try mem.(!ptr + ref) <- int_of_char (input_char inchan)
-                        with End_of_file -> ()
+                    begin match io#get_code None with
+                    | Some x -> mem.(!ptr + ref) <- x
+                    | None -> ()
                     end
                 | Output ref ->
-                    output_char outchan (char_of_int mem.(!ptr + ref));
-                    flush outchan
+                    io#put_code mem.(!ptr + ref); io#flush_out ()
                 | While (ref, nodes) ->
                     while mem.(!ptr + ref) <> 0 do exec nodes done
                 | Breakpoint -> (* TODO *)

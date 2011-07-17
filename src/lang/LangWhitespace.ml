@@ -208,9 +208,9 @@ module BigHashtbl = Hashtbl.Make(struct
 end)
 
 let interpreter = object
-    inherit [t] EsotopeCommon.interpreter kind
+    inherit [t] TextIO.interpreter kind
 
-    method process code =
+    method process code io =
         (* pre-scanning *)
         let labels = Hashtbl.create 64 in
         let rec scan = function
@@ -223,8 +223,6 @@ let interpreter = object
             | _ :: t -> scan t
         in scan code;
 
-        let inchan = stdin in
-        let outchan = stdout in
         let heap = BigHashtbl.create 8 in
         let subs = ref [] in
 
@@ -296,33 +294,30 @@ let interpreter = object
             | Exit :: _ -> ()
             | OutputChar :: t ->
                 let run c s =
-                    let c' = Big_int.int_of_big_int c in
-                    output_char outchan (char_of_int c');
-                    flush outchan;
+                    io#put_code (Big_int.int_of_big_int c);
+                    io#flush_out ();
                     exec t s
                 in try1 run
             | OutputNum :: t ->
                 let run v s =
-                    output_string outchan (Big_int.string_of_big_int v);
-                    flush outchan;
+                    io#put_big_int v;
+                    io#flush_out ();
                     exec t s
                 in try1 run
             | InputChar :: t ->
                 let run k s =
-                    begin try
-                        let v = int_of_char (input_char inchan) in
+                    begin match io#get_code None with
+                    | Some v -> 
                         BigHashtbl.replace heap k (Big_int.big_int_of_int v)
-                    with End_of_file -> ()
+                    | None -> ()
                     end;
                     exec t s
                 in try1 run
             | InputNum :: t ->
                 let run k s =
-                    begin try
-                        Scanf.fscanf inchan "%_[^-0-9]%[-0-9]"
-                            (fun v -> BigHashtbl.replace heap k
-                                        (Big_int.big_int_of_string v))
-                    with End_of_file -> ()
+                    begin match io#get_big_int None with
+                    | Some v -> BigHashtbl.replace heap k v
+                    | None -> ()
                     end;
                     exec t s
                 in try1 run
