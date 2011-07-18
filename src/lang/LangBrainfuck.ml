@@ -34,6 +34,7 @@ type t = (int,int) node list
 let kind = object
     inherit [t] EsotopeCommon.kind
     method name = "brainfuck"
+    method aliases = ["bf"; ".b"] (* ".bf" is used for Befunge-93. *)
 end
 
 (**************************************************************************)

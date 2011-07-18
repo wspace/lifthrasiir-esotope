@@ -15,6 +15,7 @@ type t = string
 let kind = object
     inherit [t] EsotopeCommon.kind
     method name = "text"
+    method aliases = [".txt"]
 end
 
 (**************************************************************************)

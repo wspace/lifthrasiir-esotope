@@ -31,6 +31,7 @@ type t = (int,int) node list
 let kind = object
     inherit [t] EsotopeCommon.kind
     method name = "spoon"
+    method aliases = [".sp"]
 end
 
 (**************************************************************************)

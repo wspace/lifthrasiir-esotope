@@ -40,6 +40,7 @@ type t = LangBrainfuck.t (* yeah, we don't need an another type *)
 let kind = object
     inherit [t] EsotopeCommon.kind
     method name = "ook"
+    method aliases = [".ook"]
 end
 
 (**************************************************************************)

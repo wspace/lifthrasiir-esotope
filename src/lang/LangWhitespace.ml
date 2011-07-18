@@ -71,6 +71,7 @@ type t = string node list
 let kind = object
     inherit [t] EsotopeCommon.kind
     method name = "whitespace"
+    method aliases = ["ws"; ".ws"]
 end
 
 (**************************************************************************)

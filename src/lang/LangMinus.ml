@@ -19,6 +19,7 @@ open LangMinus_ast
 let kind = object
     inherit [t] EsotopeCommon.kind
     method name = "minus"
+    method aliases = [".ms"]
 end
 
 (**************************************************************************)

@@ -23,6 +23,7 @@ open LangUnlambda_ast
 let kind = object
     inherit [t] EsotopeCommon.kind
     method name = "unlambda"
+    method aliases = [".unl"]
 end
 
 (**************************************************************************)

@@ -55,6 +55,7 @@ type t = node list
 let kind = object
     inherit [t] EsotopeCommon.kind
     method name = "hq9+"
+    method aliases = ["hq9"; "hq9plus"]
 end
 
 (**************************************************************************)

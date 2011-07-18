@@ -31,6 +31,9 @@
 class virtual kind_base : object
     (* Kind name. Used when parsing the user arguments. *)
     method virtual name : string
+    (* Other possible aliases for kind name. If the entry starts with a period
+     * ('.') then it is also used as an associated extension for this kind. *)
+    method aliases : string list
     (* Connects a source and sink. *)
     method virtual connect : source_base -> sink_base -> unit
 end
@@ -57,6 +60,29 @@ class virtual processor_base : object
      * negative.) The default weight is 10. *)
     method weight : int
 end
+
+(**************************************************************************)
+(* Registry for kinds and processors. *)
+
+(* A mapping from a principal kind name to a kind. Since there are exactly one
+ * entry for each kind, this is mainly intended for enumerating all kinds. *)
+val kinds : (string, kind_base) Hashtbl.t
+(* A mapping from a kind alias to a kind. This is what lookup_kind uses. *)
+val kind_aliases : (string, kind_base) Hashtbl.t
+(* A mapping from an associated file extension to a kind. This is what
+ * lookup_extension uses. *)
+val kind_extensions : (string, kind_base) Hashtbl.t
+
+(* Registers or unregisters given kind. *)
+val register_kind : kind_base -> unit
+val unregister_kind : kind_base -> unit
+
+(* A mapping from source and destination kinds to a processor. *)
+val processors : (kind_base, (kind_base, processor_base) Hashtbl.t) Hashtbl.t
+
+(* Registers or unregisters given processor. *)
+val register_proc : processor_base -> unit
+val unregister_proc : processor_base -> unit
 
 (**************************************************************************)
 (* Implementations for kind, sink and source. *)
@@ -160,6 +186,10 @@ end
 (* Searches the kind for given name. Raises Not_found if there is no such
  * kind. *)
 val lookup_kind : string -> kind_base
+
+(* Searches the kind for given file extension (a form of ".ext"). Raises
+ * Not_found if there is no such extension. *)
+val lookup_extension : string -> kind_base
 
 (* Searches the processor for given input and output kind. Raises Not_found
  * if there is no such processor. *)

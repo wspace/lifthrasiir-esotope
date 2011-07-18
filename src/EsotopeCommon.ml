@@ -5,6 +5,7 @@
 
 class virtual kind_base = object
     method virtual name : string
+    method aliases = ([] : string list)
     method virtual connect : source_base -> sink_base -> unit
 end
 
@@ -24,10 +25,48 @@ class virtual processor_base = object
 end
 
 (**************************************************************************)
-(* Implementations for kind, sink and source. *)
+(* Registry for kinds and processors. *)
 
-let proc_graph = Hashtbl.create 8
 let kinds = Hashtbl.create 8
+let kind_aliases = Hashtbl.create 8
+let kind_extensions = Hashtbl.create 8
+let processors = Hashtbl.create 8
+
+let register_kind kind =
+    (* sanity checks *)
+    if Hashtbl.mem kinds kind#name then
+        failwith (Printf.sprintf "fatal: duplicate kind name %S" kind#name);
+    List.iter
+        (fun alias -> if Hashtbl.mem kind_aliases alias then
+            failwith (Printf.sprintf "fatal: duplicate kind alias %S" alias))
+        kind#aliases;
+
+    Hashtbl.add kinds kind#name kind;
+    let add_alias alias =
+        Hashtbl.add kind_aliases alias kind;
+        if alias.[0] = '.' then Hashtbl.add kind_extensions alias kind
+    in List.iter add_alias (kind#name :: kind#aliases);
+    Hashtbl.add processors kind (Hashtbl.create 2)
+
+let unregister_kind kind =
+    Hashtbl.remove kinds kind#name;
+    let remove_alias alias =
+        Hashtbl.remove kind_aliases alias;
+        Hashtbl.remove kind_extensions alias
+    in List.iter remove_alias (kind#name :: kind#aliases);
+    Hashtbl.remove processors kind;
+    Hashtbl.iter (fun _ x -> Hashtbl.remove x kind) processors
+
+let register_proc proc =
+    let h = Hashtbl.find processors proc#input_kind in
+    Hashtbl.add h proc#output_kind proc
+
+let unregister_proc proc =
+    let h = Hashtbl.find processors proc#input_kind in
+    Hashtbl.remove h proc#output_kind
+
+(**************************************************************************)
+(* Implementations for kind, sink and source. *)
 
 class virtual ['t] kind = object (self)
     inherit kind_base
@@ -39,8 +78,7 @@ class virtual ['t] kind = object (self)
             else failwith "kind mismatch"
 
     (* save itself for the later lookup. *)
-    initializer Hashtbl.add kinds self#name (self :> kind_base)
-    initializer Hashtbl.add proc_graph (self :> kind_base) (Hashtbl.create 2)
+    initializer register_kind (self :> kind_base)
 end
 
 and virtual ['t] sink inkind = object
@@ -94,8 +132,6 @@ end
 (**************************************************************************)
 (* Processors. *)
 
-let processors = Hashtbl.create 8
-
 class virtual ['src,'dest] processor inkind outkind = object (self)
     inherit processor_base
     inherit ['src] sink inkind
@@ -115,9 +151,7 @@ class virtual ['src,'dest] processor inkind outkind = object (self)
     method virtual process : 'src -> 'dest
 
     (* save itself for the later lookup. *)
-    initializer
-        let h = Hashtbl.find proc_graph (self#input_kind :> kind_base) in
-        Hashtbl.add h (self#output_kind :> kind_base) (self :> processor_base)
+    initializer register_proc (self :> processor_base)
 end
 
 class virtual ['dest] reader outkind = object
@@ -170,11 +204,12 @@ end
 (**************************************************************************)
 (* Lookup interface and driver. *)
 
-let lookup_kind name =
-    Hashtbl.find kinds name
+let lookup_kind name = Hashtbl.find kind_aliases name
+
+let lookup_extension name = Hashtbl.find kind_extensions name
 
 let lookup_proc inp out =
-    let h = Hashtbl.find proc_graph inp in Hashtbl.find h out
+    let h = Hashtbl.find processors inp in Hashtbl.find h out
 
 module Heap = struct
     (* simple binary heap *)
@@ -257,7 +292,7 @@ let find_procs srckind destkind =
                             Heap.add queue d (v', proc :: trace)
                         end
                     end
-                in Hashtbl.iter relax (Hashtbl.find proc_graph v)
+                in Hashtbl.iter relax (Hashtbl.find processors v)
             end;
             loop ()
     in loop ()

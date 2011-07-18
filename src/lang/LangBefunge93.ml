@@ -29,6 +29,7 @@ type t = char array array
 let kind = object
     inherit [t] EsotopeCommon.kind
     method name = "befunge93"
+    method aliases = [".bf"; ".b93"]
 end
 
 (**************************************************************************)
