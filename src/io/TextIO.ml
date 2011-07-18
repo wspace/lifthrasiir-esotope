@@ -44,12 +44,12 @@ class byte_io inchan outchan = object (self)
     method put_code = output_byte outchan
     method put_char = output_char outchan
     method put_str = output_string outchan
-    method put_newline _ = self#put_char '\n'
+    method put_newline () = self#put_char '\n'
     method put_int = Printf.fprintf outchan "%d"
     method put_big_int n = self#put_str (Big_int.string_of_big_int n)
 
     val lookahead = ref None
-    method private getc _ =
+    method private getc () =
         match !lookahead with
         | Some c -> lookahead := None; Some c
         | None -> try Some (input_char inchan) with End_of_file -> None
@@ -79,7 +79,7 @@ class byte_io inchan outchan = object (self)
     method get_line p =
         self#prompt p;
         let buf = Buffer.create 8 in
-        let rec recur _ =
+        let rec recur () =
             match self#getc () with
             | Some '\n' -> Some (Buffer.contents buf)
             | Some c -> Buffer.add_char buf c; recur ()
@@ -122,7 +122,7 @@ class byte_io inchan outchan = object (self)
         | None -> Buffer.contents buf
 
     method get_nat p =
-        let rec skip _ =
+        let rec skip () =
             match self#getc () with
             | Some ('0'..'9' as c) ->
                 Some (self#parse_pos_int (int_of_char c - zero_char))
@@ -144,7 +144,7 @@ class byte_io inchan outchan = object (self)
         in self#prompt p; skip false
 
     method get_big_nat p =
-        let rec skip _ =
+        let rec skip () =
             match self#getc () with
             | Some ('0'..'9' as c) ->
                 let buf = Buffer.create 8 in
@@ -167,9 +167,9 @@ class byte_io inchan outchan = object (self)
             | None -> None
         in self#prompt p; skip false
 
-    method flush_out _ = flush outchan
+    method flush_out () = flush outchan
 
-    method flush_in _ =
+    method flush_in () =
         (* XXX this is the best we can do. *)
         lookahead := None
 end

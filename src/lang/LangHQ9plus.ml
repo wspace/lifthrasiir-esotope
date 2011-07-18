@@ -44,7 +44,7 @@ let beer_song =
              Take one down and pass it around\n\
              %s of beer on the wall\n"
             (bottles n) (bottles n) (bottles (n-1));
-        if n > 1 then Buffer.add_char buf '\n' else ()
+        if n > 1 then Buffer.add_char buf '\n'
     done;
     Buffer.contents buf
 
@@ -74,7 +74,7 @@ let reader = object
             | Some '+' -> Stream.junk stream; parse (Increment :: acc)
             | Some _ ->
                 let buf = Buffer.create 1 in
-                let rec collect _ =
+                let rec collect () =
                     match Stream.peek stream with
                     | Some ch when not (String.contains "HhQq9+" ch) ->
                         Stream.junk stream;

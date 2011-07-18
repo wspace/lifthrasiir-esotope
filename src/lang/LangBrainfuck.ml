@@ -46,7 +46,7 @@ let reader = object
         let rec parse acc =
             let collect_run f =
                 let buf = Buffer.create 1 in
-                let rec collect _ =
+                let rec collect () =
                     match Stream.peek stream with
                     | Some ch when f ch ->
                         Stream.junk stream;
@@ -155,8 +155,6 @@ let writer = object
                 Buffer.add_string buf (String.make v plus)
             else if v < 0 then
                 Buffer.add_string buf (String.make (-v) minus)
-            else
-                ()
         in
 
         let rec emit nodes =

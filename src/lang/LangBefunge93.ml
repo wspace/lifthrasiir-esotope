@@ -55,7 +55,7 @@ let reader = object
                 end
             | Some ch ->
                 Stream.junk stream;
-                if x < ncolumns then row.(x) <- ch else ();
+                if x < ncolumns then row.(x) <- ch;
                 parse_line (x + 1) row
             | None -> false
         in
@@ -84,8 +84,8 @@ let interpreter = object
         let delta = ref (1,0) in
         let stack = ref [] in
 
-        let get _ = match !stack with [] -> 0 | h::t -> stack := t; h in
-        let get2 _ = let a = get () in let b = get () in (a, b) in
+        let get () = match !stack with [] -> 0 | h::t -> stack := t; h in
+        let get2 () = let a = get () in let b = get () in (a, b) in
         let advance (x,y) =
             let dx, dy = !delta in
             let x, y = (x + dx, y + dy) in
@@ -146,10 +146,9 @@ let interpreter = object
                 | 'p' ->
                     let ty, tx = get2 () in
                     let v = get () in
+                    (* out-of-boundary is not an error, but a nop *)
                     if 0 <= ty && ty < nrows && 0 <= tx && tx < ncolumns then
                         code.(ty).(tx) <- char_of_int (v land 255)
-                    else
-                        () (* out-of-boundary is not an error, but a nop *)
                 | 'g' ->
                     let ty, tx = get2 () in
                     if 0 <= ty && ty < nrows && 0 <= tx && tx < ncolumns then

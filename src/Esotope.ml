@@ -59,7 +59,7 @@ let _ =
     let fromkind = lookup_kind result.fromkind in
     let tokind = lookup_kind result.tokind in
     let procs = build_procs fromkind tokind in
-    if result.verbose then display_procs procs else ();
+    if result.verbose then display_procs procs;
     if tokind = interp_kind then
         (run stream stream_kind procs interp_kind : unit)
     else

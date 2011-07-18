@@ -125,7 +125,7 @@ let reader = object
                         `L Exit)))                        (* LF LF LF *)
         in
 
-        let rec read _ =
+        let rec read () =
             match StreamUtil.try_next stream with
             | Some ((' '|'\t'|'\n') as ch) -> Some ch
             | Some _ -> read ()

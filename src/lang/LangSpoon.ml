@@ -125,8 +125,6 @@ let writer = object
                 Buffer.add_string buf (repeat v plus)
             else if v < 0 then
                 Buffer.add_string buf (repeat (-v) minus)
-            else
-                ()
         in
 
         (* see LangBrainfuck.writer#process for notes. *)

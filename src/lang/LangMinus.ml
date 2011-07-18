@@ -86,15 +86,12 @@ let interpreter = object
             | _ -> failwith "unexpected"
         in
 
-        let rec exec _ =
+        let rec exec () =
             match code.(!codeptr) with
             | Subtract (lhs,rhs) ->
                 eval_lhs (eval_rhs rhs) lhs;
                 incr codeptr;
-                if !codeptr < 0 || !codeptr >= Array.length code then
-                    ()
-                else
-                    exec ()
+                if !codeptr >= 0 && !codeptr < Array.length code then exec ()
             | Exit _ -> ()
         in Random.self_init (); exec ()
 end

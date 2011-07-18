@@ -51,7 +51,7 @@ let reader = object
     method process lexbuf =
         let codebuf = Buffer.create 8 in
 
-        let rec parse _ =
+        let rec parse () =
             match LangOok_lexer.token lexbuf with
             | Some first ->
                 begin match LangOok_lexer.token lexbuf with
