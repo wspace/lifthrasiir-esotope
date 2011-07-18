@@ -9,8 +9,8 @@ OCAMLLEX = ocamllex
 OCAMLYACC = ocamlyacc
 
 DIRS = -I src -I src/io -I src/lang
-INCS = -I +ocamlgraph
-LIBS = graph.cmxa nums.cmxa
+INCS = 
+LIBS = nums.cmxa
 
 BIN = esotope
 SRCS = \

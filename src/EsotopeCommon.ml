@@ -1,7 +1,5 @@
 (* This is a part of Esotope. See README for more information. *)
 
-open Graph
-
 (**************************************************************************)
 (* Base classes. *)
 
@@ -26,53 +24,10 @@ class virtual processor_base = object
 end
 
 (**************************************************************************)
-(* Lookup helpers. *)
-
-let dummy_kind = object
-    inherit kind_base
-    method name = "<dummy>"
-    method connect a b = failwith "should not be called."
-end
-
-let dummy_processor = object
-    inherit processor_base
-    method input_kind = dummy_kind
-    method output_kind = dummy_kind
-end
-
-module V = struct
-    type t = kind_base
-    let equal x y = (x = y)
-    let hash = Hashtbl.hash
-    let compare = compare
-end
-
-module E = struct
-    type t = processor_base
-    let src e = e#input_kind
-    let dst e = e#output_kind
-    let default = dummy_processor
-    let compare = compare
-end
-
-module G = Imperative.Digraph.ConcreteBidirectionalLabeled(V)(E)
-
-module W = struct
-    type label = G.E.label
-    type t = int
-    let weight proc = proc#weight
-    let zero = 0
-    let add = (+)
-    let compare = compare
-end
-
-module Dij = Path.Dijkstra(G)(W)
-
-let proc_graph = G.create ()
-let kinds = Hashtbl.create 8
-
-(**************************************************************************)
 (* Implementations for kind, sink and source. *)
+
+let proc_graph = Hashtbl.create 8
+let kinds = Hashtbl.create 8
 
 class virtual ['t] kind = object (self)
     inherit kind_base
@@ -85,7 +40,7 @@ class virtual ['t] kind = object (self)
 
     (* save itself for the later lookup. *)
     initializer Hashtbl.add kinds self#name (self :> kind_base)
-    initializer G.add_vertex proc_graph (self :> kind_base)
+    initializer Hashtbl.add proc_graph (self :> kind_base) (Hashtbl.create 2)
 end
 
 and virtual ['t] sink inkind = object
@@ -160,9 +115,9 @@ class virtual ['src,'dest] processor inkind outkind = object (self)
     method virtual process : 'src -> 'dest
 
     (* save itself for the later lookup. *)
-    initializer G.add_edge_e proc_graph
-        ((self#input_kind :> kind_base), (self :> processor_base),
-         (self#output_kind :> kind_base))
+    initializer
+        let h = Hashtbl.find proc_graph (self#input_kind :> kind_base) in
+        Hashtbl.add h (self#output_kind :> kind_base) (self :> processor_base)
 end
 
 class virtual ['dest] reader outkind = object
@@ -198,7 +153,7 @@ let stream_to_unicode = object
 
     method weight = 1
     method process stream =
-        let getc _ = StreamUtil.try_next stream in
+        let getc () = StreamUtil.try_next stream in
         Stream.from (fun _ -> UnicodeUtil.get_utf8 getc)
 end
 
@@ -215,14 +170,97 @@ end
 (**************************************************************************)
 (* Lookup interface and driver. *)
 
-let lookup_kind name = Hashtbl.find kinds name
+let lookup_kind name =
+    Hashtbl.find kinds name
 
 let lookup_proc inp out =
-    let _, proc, _ = G.find_edge proc_graph inp out in proc
+    let h = Hashtbl.find proc_graph inp in Hashtbl.find h out
+
+module Heap = struct
+    (* simple binary heap *)
+    type 'a t = {
+        mutable arr : (int * 'a option) array;
+        mutable next : int
+    }
+
+    let create () = { arr = [| (0,None) |]; next = 1 }
+
+    let add h w v =
+        (* resizing *)
+        if h.next = Array.length h.arr then begin
+            let newarr = Array.make (h.next lsl 1) (0,None) in
+            Array.blit h.arr 0 newarr 0 h.next; h.arr <- newarr
+        end;
+
+        let rec liftup pos =
+            let upward = h.arr.(pos lsr 1) in
+            if pos > 1 && fst upward > w then begin
+                h.arr.(pos) <- upward;
+                liftup (pos lsr 1)
+            end else
+                h.arr.(pos) <- (w, Some v)
+        in liftup h.next; h.next <- h.next + 1
+
+    let extract h =
+        if h.next < 2 then
+            None
+        else
+            let min = h.arr.(1) in
+            h.next <- h.next - 1;
+            let w, v = h.arr.(h.next) in
+            h.arr.(h.next) <- (0,None);
+            let rec liftdown pos =
+                let posl, posr = pos lsl 1, (pos lsl 1) + 1 in
+                let upward0, w0 =
+                    if posl < h.next && fst h.arr.(posl) < w then
+                        (posl, fst h.arr.(posl))
+                    else
+                        (pos, w) in
+                let upward =
+                    if posr < h.next && fst h.arr.(posr) < w0 then
+                        posr
+                    else
+                        upward0 in
+                if upward != pos then begin (* swap required *)
+                    h.arr.(pos) <- h.arr.(upward);
+                    liftdown upward
+                end else
+                    h.arr.(pos) <- (w, v)
+            in liftdown 1;
+            match min with
+            | w', Some v' -> Some (w', v')
+            | _, None -> None
+end
 
 let find_procs srckind destkind =
-    let path, _ = Dij.shortest_path proc_graph srckind destkind in
-    List.map (fun (_,proc,_) -> proc) path
+    let visited = Hashtbl.create 8 in
+    let dist = Hashtbl.create 8 in
+    let queue = Heap.create () in
+    Heap.add queue 0 (srckind, []);
+    Hashtbl.add dist srckind 0;
+
+    let rec loop () =
+        match Heap.extract queue with
+        | None -> raise Not_found
+        | Some (_, (v, trace)) when v = destkind -> List.rev trace
+        | Some (w, (v, trace)) ->
+            if not (Hashtbl.mem visited v) then begin
+                Hashtbl.add visited v ();
+                let relax v' proc =
+                    if not (Hashtbl.mem visited v') then begin
+                        let d = w + proc#weight in
+                        if
+                            try (d < Hashtbl.find dist v')
+                            with Not_found -> true
+                        then begin
+                            Hashtbl.replace dist v' d;
+                            Heap.add queue d (v', proc :: trace)
+                        end
+                    end
+                in Hashtbl.iter relax (Hashtbl.find proc_graph v)
+            end;
+            loop ()
+    in loop ()
 
 let run data srckind procs destkind = 
     let result = ref None in
