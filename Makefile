@@ -25,6 +25,10 @@ SRCS = \
 	src/lang/LangOok_lexer.ml \
 	src/lang/LangOok.ml \
 	src/lang/LangSpoon.ml \
+	src/lang/LangKipple_ast.ml \
+	src/lang/LangKipple_parser.ml \
+	src/lang/LangKipple_lexer.ml \
+	src/lang/LangKipple.ml \
 	src/lang/LangUnlambda_ast.ml \
 	src/lang/LangUnlambda_parser.ml \
 	src/lang/LangUnlambda_lexer.ml \
@@ -42,13 +46,16 @@ INTFS = \
 	src/UnicodeUtil.mli \
 	src/EsotopeCommon.mli \
 	src/io/TextIO.mli \
+	src/lang/LangKipple_parser.mli \
 	src/lang/LangUnlambda_parser.mli \
 	src/lang/LangMinus_parser.mli
 LEXERS = \
 	src/lang/LangOok_lexer.mll \
+	src/lang/LangKipple_lexer.mll \
 	src/lang/LangUnlambda_lexer.mll \
 	src/lang/LangMinus_lexer.mll
 PARSERS = \
+	src/lang/LangKipple_parser.mly \
 	src/lang/LangUnlambda_parser.mly \
 	src/lang/LangMinus_parser.mly
 
