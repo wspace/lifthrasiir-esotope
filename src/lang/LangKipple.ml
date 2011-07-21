@@ -3,12 +3,12 @@
 (***************************************************************************
  LangKipple
 
- This module implements the Kipple programming language, designed by Rune
- Berge in 2003. It is a minimalistic stack-based programming language,
- where the only loop construct is a loop while the target stack is not empty
- and the only way to pop from the stack is to (conditionally) empty the
- stack using x? statement. The input and output is emulated as a stack "i"
- and "o", which precludes the very possibility of user interaction.
+ This module implements the Kipple programming language, designed by
+ Rune Berge in 2003. It is a minimalistic stack-based programming language,
+ where the only loop construct is a loop while the target stack is not
+ empty and the only way to pop from the stack is to (conditionally) empty
+ the stack using x? statement. The input and output is emulated as a stack
+ "i" and "o", which precludes the very possibility of user interaction.
 
  Esotope implements a conservative extension to Kipple which allows
  a certain class of programs for the user interaction, as a separate
@@ -105,28 +105,34 @@ let writer = object
     inherit [t] EsotopeCommon.writer kind
 
     method process nodes buf =
-        let stack s = char_of_int (int_of_char '@' + s) in
+        let stack s = Char.lowercase (char_of_int (int_of_char '@' + s)) in
 
         let rec emit = function
             | Nop -> ()
             | Push (s,v) ->
-                Printf.bprintf buf "%c<%ld " (stack s) v
+                Printf.bprintf buf "%c<%ld" (stack s) v
             | Move (s1,s2) ->
-                Printf.bprintf buf "%c<%c " (stack s1) (stack s2)
+                Printf.bprintf buf "%c<%c" (stack s1) (stack s2)
             | Add (s,v) ->
-                Printf.bprintf buf "%c+%ld " (stack s) v
+                Printf.bprintf buf "%c+%ld" (stack s) v
             | AddPop (s1,s2) ->
-                Printf.bprintf buf "%c+%c " (stack s1) (stack s2)
+                Printf.bprintf buf "%c+%c" (stack s1) (stack s2)
             | Sub (s,v) ->
-                Printf.bprintf buf "%c-%ld " (stack s) v
+                Printf.bprintf buf "%c-%ld" (stack s) v
             | SubPop (s1,s2) ->
-                Printf.bprintf buf "%c-%c " (stack s1) (stack s2)
+                Printf.bprintf buf "%c-%c" (stack s1) (stack s2)
             | ClearIfZero s ->
-                Printf.bprintf buf "%c? " (stack s)
+                Printf.bprintf buf "%c?" (stack s)
             | While (s,nodes) ->
-                Printf.bprintf buf "(%c " (stack s);
-                List.iter emit nodes;
-                Printf.bprintf buf ") "
-        in List.iter emit nodes
+                Printf.bprintf buf "(%c" (stack s);
+                List.iter sp_emit nodes;
+                Printf.bprintf buf ")"
+        and sp_emit node =
+            Buffer.add_char buf ' '; emit node
+        in
+
+        match nodes with
+        | [] -> ()
+        | h::t -> emit h; List.iter sp_emit t
 end
 

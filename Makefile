@@ -38,6 +38,8 @@ SRCS = \
 	src/lang/LangMinus_lexer.ml \
 	src/lang/LangMinus.ml \
 	src/lang/LangBefunge93.ml \
+	src/lang/LangMalbolge.ml \
+	src/lang/LangNormalizedMalbolge.ml \
 	src/lang/LangWhitespace.ml \
 	src/Esotope.ml
 INTFS = \
