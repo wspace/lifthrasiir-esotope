@@ -10,7 +10,7 @@ OCAMLYACC = ocamlyacc
 
 DIRS = -I src -I src/io -I src/lang
 INCS = 
-LIBS = nums.cmxa
+LIBS = nums.cmxa str.cmxa
 
 BIN = esotope
 SRCS = \
@@ -25,6 +25,10 @@ SRCS = \
 	src/lang/LangOok_lexer.ml \
 	src/lang/LangOok.ml \
 	src/lang/LangSpoon.ml \
+	src/lang/LangFalse_ast.ml \
+	src/lang/LangFalse_parser.ml \
+	src/lang/LangFalse_lexer.ml \
+	src/lang/LangFalse.ml \
 	src/lang/LangKipple_ast.ml \
 	src/lang/LangKipple_parser.ml \
 	src/lang/LangKipple_lexer.ml \
@@ -48,15 +52,18 @@ INTFS = \
 	src/UnicodeUtil.mli \
 	src/EsotopeCommon.mli \
 	src/io/TextIO.mli \
+	src/lang/LangFalse_parser.mli \
 	src/lang/LangKipple_parser.mli \
 	src/lang/LangUnlambda_parser.mli \
 	src/lang/LangMinus_parser.mli
 LEXERS = \
 	src/lang/LangOok_lexer.mll \
+	src/lang/LangFalse_lexer.mll \
 	src/lang/LangKipple_lexer.mll \
 	src/lang/LangUnlambda_lexer.mll \
 	src/lang/LangMinus_lexer.mll
 PARSERS = \
+	src/lang/LangFalse_parser.mly \
 	src/lang/LangKipple_parser.mly \
 	src/lang/LangUnlambda_parser.mly \
 	src/lang/LangMinus_parser.mly
