@@ -11,7 +11,7 @@
  It is a stack-based programming language which strikingly similar to Forth,
  though it differs from Forth due to its support of anonymous functions
  (instead of compile-time word rewriting in Forth). It was also highly
- usable due to its ability to embed a 6800 assembly (number`).
+ useful due to its ability to embed a 68000 assembly (number`).
 
  Some compatibility note:
  - Esotope supports three forms of the flush (ß/B) and pick (ø/O) commands:
