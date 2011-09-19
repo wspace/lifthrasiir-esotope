@@ -10,6 +10,7 @@ type cmdflags =
      mutable tokind : string;
      mutable fromfile : string;
      mutable tofile : string option;
+     mutable textio : TextIO.text_io;
      mutable verbose : bool}
 
 let parse_args =
@@ -18,6 +19,7 @@ let parse_args =
                   tokind = "interp";
                   fromfile = "-";
                   tofile = None;
+                  textio = TextIO.byte_stdio;
                   verbose = false} in
     Arg.parse [("-f", Arg.String (fun x -> result.fromkind <- x),
                 "Language translated from.");
@@ -30,6 +32,9 @@ let parse_args =
                  processed.");
                ("-o", Arg.String (fun x -> result.tofile <- Some x),
                 "Output file.");
+               ("-U", Arg.Unit (fun () -> result.textio <- TextIO.unicode_stdio),
+                "Enables the Unicode output whenever possible. Every \
+                 \"character code\" is interpreted as Unicode code points.");
                ("--list-kinds", Arg.Unit (fun () -> result.oper <- ListKinds),
                 "Shows all supported kinds.")]
               (fun x -> result.fromfile <- x)
@@ -100,6 +105,7 @@ let process result =
     let tokind = lookup_kind result.tokind in
     let procs = build_procs fromkind tokind in
     if result.verbose then display_procs procs;
+    TextIO.current_text_io := result.textio;
     if tokind = interp_kind then
         (run stream stream_kind procs interp_kind : unit)
     else

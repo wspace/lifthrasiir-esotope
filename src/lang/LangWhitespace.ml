@@ -279,7 +279,7 @@ let interpreter = object
                 let t' = label l in
                 let run k s =
                     let sign = Big_int.sign_big_int k in
-                    exec (if sign == 0 then t' else t) s
+                    exec (if sign = 0 then t' else t) s
                 in try1 run
             | JumpIfNeg l :: t ->
                 let t' = label l in

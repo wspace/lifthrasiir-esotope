@@ -18,6 +18,8 @@ SRCS = \
 	src/StreamUtil.ml \
 	src/UnicodeUtil.ml \
 	src/EsotopeCommon.ml \
+	src/type/Stack.ml \
+	src/type/Queue.ml \
 	src/type/Space.ml \
 	src/io/TextIO.ml \
 	src/lang/LangText.ml \
@@ -43,6 +45,7 @@ SRCS = \
 	src/lang/LangMinus_lexer.ml \
 	src/lang/LangMinus.ml \
 	src/lang/LangBefunge93.ml \
+	src/lang/LangAheui.ml \
 	src/lang/LangMalbolge.ml \
 	src/lang/LangNormalizedMalbolge.ml \
 	src/lang/LangWhitespace.ml \
@@ -52,6 +55,8 @@ INTFS = \
 	src/StreamUtil.mli \
 	src/UnicodeUtil.mli \
 	src/EsotopeCommon.mli \
+	src/type/Stack.mli \
+	src/type/Queue.mli \
 	src/type/Space.mli \
 	src/io/TextIO.mli \
 	src/lang/LangFalse_parser.mli \
