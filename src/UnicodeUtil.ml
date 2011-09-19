@@ -59,21 +59,21 @@ let to_utf8 v =
         String.make 1 (char_of_int v)
     else if v < 0x800 then
         let s = String.create 2 in
-        s.[0] <- char_of_int (0xc0 lor (v lsl 6));
+        s.[0] <- char_of_int (0xc0 lor (v lsr 6));
         s.[1] <- char_of_int (0x80 lor (v land 0x3f)); s
     else if v < 0x10000 then
         if v >= 0xd800 && v < 0xe000 then
             raise Invalid_code_point (* surrogate pair *)
         else
             let s = String.create 3 in
-            s.[0] <- char_of_int (0xe0 lor (v lsl 12));
-            s.[1] <- char_of_int (0x80 lor ((v lsl 6) land 0x3f));
+            s.[0] <- char_of_int (0xe0 lor (v lsr 12));
+            s.[1] <- char_of_int (0x80 lor ((v lsr 6) land 0x3f));
             s.[2] <- char_of_int (0x80 lor (v land 0x3f)); s
     else if v < 0x110000 then
         let s = String.create 4 in
-        s.[0] <- char_of_int (0xf0 lor (v lsl 18));
-        s.[1] <- char_of_int (0x80 lor ((v lsl 12) land 0x3f));
-        s.[2] <- char_of_int (0x80 lor ((v lsl 6) land 0x3f));
+        s.[0] <- char_of_int (0xf0 lor (v lsr 18));
+        s.[1] <- char_of_int (0x80 lor ((v lsr 12) land 0x3f));
+        s.[2] <- char_of_int (0x80 lor ((v lsr 6) land 0x3f));
         s.[3] <- char_of_int (0x80 lor (v land 0x3f)); s
     else
         raise Invalid_code_point

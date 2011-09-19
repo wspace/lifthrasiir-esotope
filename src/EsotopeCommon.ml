@@ -179,8 +179,6 @@ end
 (**************************************************************************)
 (* Built-in processors. *)
 
-exception Invalid_utf8_sequence
-
 let stream_to_unicode = object
     inherit [stream_type,unicode_stream_type]
         processor stream_kind unicode_stream_kind
