@@ -22,10 +22,12 @@
  the language. (TODO)
 ***************************************************************************)
 
+open Space
+
 (**************************************************************************)
 (* The kind. *)
 
-type t = char array array
+type t = char Space2D.t
 let kind = object
     inherit [t] EsotopeCommon.kind
     method name = "befunge93"
@@ -39,36 +41,17 @@ let reader = object
     inherit [t] EsotopeCommon.reader kind
 
     method process stream =
+        (*
         let nrows = 25 in
         let ncolumns = 80 in
-        let code = Array.init nrows (fun _ -> Array.make ncolumns ' ') in
+        *)
+        let code = Space2D.create (8,8) ' ' in
 
-        let rec parse_line x row =
-            match Stream.peek stream with
-            (* TODO should eventually be moved to IO module... *)
-            | Some '\n' -> Stream.junk stream; true
-            | Some '\r' ->
-                Stream.junk stream;
-                begin match Stream.peek stream with
-                | Some '\n' -> Stream.junk stream; true
-                | Some _ -> true
-                | None -> false
-                end
-            | Some ch ->
-                Stream.junk stream;
-                if x < ncolumns then row.(x) <- ch;
-                parse_line (x + 1) row
-            | None -> false
-        in
-
-        let rec parse y =
-            if parse_line 0 code.(y) && y + 1 < nrows then
-                parse (y + 1)
-            else
-                code
-        in
-
-        parse 0
+        let readcell stream =
+            match StreamUtil.try_next stream with
+            | Some ch -> ch
+            | None -> raise End_of_file
+        in Space2D.from_char_stream readcell stream code (0,0)
 end
 
 (**************************************************************************)
@@ -78,9 +61,9 @@ let interpreter = object
     inherit [t] TextIO.interpreter kind
 
     method process code io =
-        let code = Array.map Array.copy code in
-        let nrows = Array.length code in
-        let ncolumns = Array.length code.(0) in
+        let code = Space2D.copy code in
+        let nrows = 25 in
+        let ncolumns = 80 in
 
         let delta = ref (1,0) in
         let stack = ref [] in
@@ -100,7 +83,7 @@ let interpreter = object
         in
 
         let rec exec (x,y) =
-            match code.(y).(x) with
+            match Space2D.get code (x,y) with
             | '@' -> ()
             | '#' -> exec (advance (advance (x,y)))
             | '"' -> exec_stringmode (advance (x,y))
@@ -149,11 +132,11 @@ let interpreter = object
                     let v = get () in
                     (* out-of-boundary is not an error, but a nop *)
                     if 0 <= ty && ty < nrows && 0 <= tx && tx < ncolumns then
-                        code.(ty).(tx) <- char_of_int (v land 255)
+                        Space2D.set code (tx,ty) (char_of_int (v land 255))
                 | 'g' ->
                     let ty, tx = get2 () in
                     if 0 <= ty && ty < nrows && 0 <= tx && tx < ncolumns then
-                        stack := int_of_char code.(ty).(tx) :: !stack
+                        stack := int_of_char (Space2D.get code (tx,ty)) :: !stack
                     else
                         stack := 0 :: !stack
                 | '&' ->
@@ -169,7 +152,7 @@ let interpreter = object
                 exec (advance (x,y))
 
         and exec_stringmode (x,y) =
-            let ch = code.(y).(x) in
+            let ch = Space2D.get code (x,y) in
             if ch = '"' then
                 exec (advance (x,y))
             else begin
@@ -189,15 +172,31 @@ let writer = object
     inherit [t] EsotopeCommon.writer kind
 
     method process code buf =
-        let build_line row =
-            Array.fold_right
-                (fun x y ->
-                    if x = ' ' && y = "" then y else String.make 1 x ^ y)
-                row "" in
-        let codestr =
-            Array.fold_right
-                (fun x y -> if x = "" && y = "" then y else x ^ "\n" ^ y)
-                (Array.map build_line code) "" in
-        Buffer.add_string buf codestr
+        (* the starting offset is guaranteed to be in the 1st quadrant *)
+        let (_,(sx,sy)) = Space2D.bounds code in
+
+        let rec build_line y x acc =
+            let x = x-1 in
+            let ch = Space2D.get code (x,y) in
+            let acc' =
+                if ch = ' ' && acc = "" then
+                    acc
+                else
+                    String.make 1 ch ^ acc
+            in if x = 0 then acc' else build_line y x acc'
+        in
+
+        let rec build y acc =
+            let y = y-1 in
+            let line = build_line y sx "" in
+            let acc' =
+                if line = "" && acc = "" then
+                    acc
+                else
+                    line ^ "\n" ^ acc
+            in if y = 0 then acc' else build y acc'
+        in
+
+        Buffer.add_string buf (build sy "")
 end
 

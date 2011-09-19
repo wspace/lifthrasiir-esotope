@@ -8,7 +8,7 @@ OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC = ocamlyacc
 
-DIRS = -I src -I src/io -I src/lang
+DIRS = -I src -I src/io -I src/type -I src/lang
 INCS = 
 LIBS = nums.cmxa str.cmxa
 
@@ -18,6 +18,7 @@ SRCS = \
 	src/StreamUtil.ml \
 	src/UnicodeUtil.ml \
 	src/EsotopeCommon.ml \
+	src/type/Space.ml \
 	src/io/TextIO.ml \
 	src/lang/LangText.ml \
 	src/lang/LangBrainfuck.ml \
@@ -51,6 +52,7 @@ INTFS = \
 	src/StreamUtil.mli \
 	src/UnicodeUtil.mli \
 	src/EsotopeCommon.mli \
+	src/type/Space.mli \
 	src/io/TextIO.mli \
 	src/lang/LangFalse_parser.mli \
 	src/lang/LangKipple_parser.mli \
@@ -111,5 +113,5 @@ clean:
 depend:
 	$(OCAMLDEP) $(OCAMLDEPFLAGS) $(SRCS) $(LEXERS) $(PARSERS) > .depend
 
-include .depend
+-include .depend
 
