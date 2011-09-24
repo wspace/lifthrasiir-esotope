@@ -24,6 +24,7 @@ SRCS = \
 	src/io/TextIO.ml \
 	src/lang/LangText.ml \
 	src/lang/LangBrainfuck.ml \
+	src/lang/LangBrainfuckWithExit.ml \
 	src/lang/LangHQ9plus.ml \
 	src/lang/LangOok_lexer.ml \
 	src/lang/LangOok.ml \

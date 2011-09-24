@@ -209,8 +209,7 @@ let interpreter = object
     inherit [t] TextIO.interpreter kind
 
     method process code io =
-        let (_,(maxx,maxy)) = Space2D.bounds code in
-        let (sx,sy) = (maxx + 1, maxy + 1) in
+        let (_,(sx,sy)) = Space2D.bounds code in
 
         let create_stack () =
             let stack = ref [] in

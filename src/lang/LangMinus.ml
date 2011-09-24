@@ -134,15 +134,17 @@ let writer = object
                 Printf.bprintf buf "%s -= %s;\n"
                     (string_of_value lhs) (string_of_value rhs)
         in
-        
+
         List.iter emit nodes
 end
 
 (**************************************************************************)
-(* The Spoon-to-Minus (and in turn, Brainfuck-to-Minus) transformer. *)
+(* The Brainfuck-to-Minus transformer. *)
+
+module BF = LangBrainfuckWithExit
 
 let from_spoon = object
-    inherit [LangSpoon.t, t] EsotopeCommon.processor LangSpoon.kind kind
+    inherit [BF.t, t] EsotopeCommon.processor BF.kind kind
 
     (* brief strategy: Minus allows a random accessible memory (by modifying
      * p). so we construct the memory with only one cell (p=0) being -k (k>0)
@@ -182,31 +184,31 @@ let from_spoon = object
         in
 
         let rec process' = function
-            | LangSpoon.AdjustMemory (target, delta) ->
+            | BF.AdjustMemory (target, delta) ->
                 (adjust MemPtr (2*target)) ^^
                 (adjust vA delta) ^^
                 (adjust MemPtr (-2*target))
-            | LangSpoon.SetMemory (target, value) ->
+            | BF.SetMemory (target, value) ->
                 (adjust MemPtr (2*target)) ^^
                 (1, fun code -> Subtract (vA,vA) :: code) ^^
                 (adjust vA value) ^^
                 (adjust MemPtr (-2*target))
-            | LangSpoon.MovePointer offset ->
+            | BF.MovePointer offset ->
                 (adjust MemPtr (2*offset))
-            | LangSpoon.Input target ->
+            | BF.Input target ->
                 (adjust MemPtr (2*target)) ^^
                 (4, fun code -> Subtract (va,va) ::
                                 Subtract (va,InputChar) ::
                                 Subtract (vA,vA) ::
                                 Subtract (vA,va) :: code) ^^
                 (adjust MemPtr (-2*target))
-            | LangSpoon.Output target ->
+            | BF.Output target ->
                 (adjust MemPtr (2*target)) ^^
                 (3, fun code -> Subtract (va,va) ::
                                 Subtract (va,vA) ::
                                 Subtract (OutputChar,va) :: code) ^^
                 (adjust MemPtr (-2*target))
-            | LangSpoon.While (target, nodes) ->
+            | BF.While (target, nodes) ->
                 let nodes' = List.map process' nodes in
                 let n, f = List.fold_left (^^) (0, fun code -> code) nodes' in
                 (12, fun code -> Subtract (va,va) ::
@@ -225,7 +227,7 @@ let from_spoon = object
                 (3, fun code -> Subtract (CodePtr,Number (n+13)) ::
                                 Subtract (MemPtr,MemPtr) ::
                                 Subtract (MemPtr,vb) :: code)
-            | LangSpoon.Exit ->
+            | BF.Exit ->
                 (1, fun code -> Exit (Number 0, Number 0) :: code)
             | _ ->
                 (0, fun code -> code)
