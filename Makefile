@@ -45,6 +45,7 @@ SRCS = \
 	src/lang/LangMinus_parser.ml \
 	src/lang/LangMinus_lexer.ml \
 	src/lang/LangMinus.ml \
+	src/lang/LangWhirl.ml \
 	src/lang/LangBefunge93.ml \
 	src/lang/LangAheui.ml \
 	src/lang/LangMalbolge.ml \
