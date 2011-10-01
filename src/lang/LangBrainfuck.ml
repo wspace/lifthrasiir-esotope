@@ -45,62 +45,48 @@ let reader = object
 
     method process stream =
         let rec parse acc =
-            let collect_run f =
-                let buf = Buffer.create 1 in
-                let rec collect () =
-                    match Stream.peek stream with
-                    | Some ch when f ch ->
-                        Stream.junk stream;
-                        Buffer.add_char buf ch;
-                        collect ()
-                    | _ -> ()
-                in collect (); Buffer.contents buf
+            let rec collect_run target count =
+                match Stream.peek stream with
+                | Some ch when ch == target ->
+                    Stream.junk stream;
+                    collect_run target (count+1)
+                | _ -> count
             in
 
             match Stream.peek stream with
             (* we do compress a run of identical commands, but we don't
              * compress a run of different commands even when we can do.
              * the compression is handled by the separate optimization. *)
-            | Some '+' ->
-                let delta = String.length (collect_run (fun ch -> ch = '+')) in
-                parse (AdjustMemory (0, delta) :: acc)
-            | Some '-' ->
-                let delta = String.length (collect_run (fun ch -> ch = '-')) in
-                parse (AdjustMemory (0, -delta) :: acc)
-            | Some '>' ->
-                let delta = String.length (collect_run (fun ch -> ch = '>')) in
-                parse (MovePointer delta :: acc)
-            | Some '<' ->
-                let delta = String.length (collect_run (fun ch -> ch = '<')) in
-                parse (MovePointer (-delta) :: acc)
+            | Some '+' -> parse (AdjustMemory (0, collect_run '+' 0) :: acc)
+            | Some '-' -> parse (AdjustMemory (0, -(collect_run '-' 0)) :: acc)
+            | Some '>' -> parse (MovePointer (collect_run '>' 0) :: acc)
+            | Some '<' -> parse (MovePointer (-(collect_run '<' 0)) :: acc)
 
-            | Some '.' ->
-                Stream.junk stream;
-                parse (Output 0 :: acc)
-            | Some ',' ->
-                Stream.junk stream;
-                parse (Input 0 :: acc)
+            | Some '.' -> Stream.junk stream; parse (Output 0 :: acc)
+            | Some ',' -> Stream.junk stream; parse (Input 0 :: acc)
 
             | Some '[' ->
                 Stream.junk stream;
                 let nodes, eof = parse [] in
                 if eof then failwith "no matching ']'" else
                 parse (While (0, nodes) :: acc)
-            | Some ']' ->
-                Stream.junk stream;
-                (List.rev acc, false)
-            | None ->
-                (List.rev acc, true)
+            | Some ']' -> Stream.junk stream; (List.rev acc, false)
+            | None -> (List.rev acc, true)
 
             (* no matter whether we recognize this command, we parse it anyway.
              * it is equivalent to Comment "#" when ignored. *)
-            | Some '#' ->
-                Stream.junk stream;
-                parse (Breakpoint :: acc)
+            | Some '#' -> Stream.junk stream; parse (Breakpoint :: acc)
 
             | Some _ ->
-                let notcmd ch = not (String.contains "+-><.,[]#" ch) in
-                parse (Comment (collect_run notcmd) :: acc)
+                let buf = Buffer.create 16 in
+                let rec collect () =
+                    match Stream.peek stream with
+                    | Some ch when not (String.contains "+-><.,[]#" ch) ->
+                        Stream.junk stream;
+                        Buffer.add_char buf ch;
+                        collect ()
+                    | _ -> ()
+                in collect (); parse (Comment (Buffer.contents buf) :: acc)
         in
 
         let nodes, eof = parse [] in
@@ -138,7 +124,7 @@ let interpreter = object
                 | While (ref, nodes) ->
                     while mem.(!ptr + ref) <> 0 do exec nodes done
                 | Breakpoint -> (* TODO *)
-                    prerr_endline "Breakpoint reached."
+                    () (*prerr_endline "Breakpoint reached."*)
                 | Nop | Comment _ -> ()
             in List.iter exec_node nodes
         in exec nodes
