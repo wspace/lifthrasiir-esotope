@@ -45,6 +45,10 @@ SRCS = \
 	src/lang/LangMinus_parser.ml \
 	src/lang/LangMinus_lexer.ml \
 	src/lang/LangMinus.ml \
+	src/lang/LangMuriel_ast.ml \
+	src/lang/LangMuriel_parser.ml \
+	src/lang/LangMuriel_lexer.ml \
+	src/lang/LangMuriel.ml \
 	src/lang/LangWhirl.ml \
 	src/lang/LangBefunge93.ml \
 	src/lang/LangAheui.ml \
@@ -64,18 +68,21 @@ INTFS = \
 	src/lang/LangFalse_parser.mli \
 	src/lang/LangKipple_parser.mli \
 	src/lang/LangUnlambda_parser.mli \
-	src/lang/LangMinus_parser.mli
+	src/lang/LangMinus_parser.mli \
+	src/lang/LangMuriel_parser.mli
 LEXERS = \
 	src/lang/LangOok_lexer.mll \
 	src/lang/LangFalse_lexer.mll \
 	src/lang/LangKipple_lexer.mll \
 	src/lang/LangUnlambda_lexer.mll \
-	src/lang/LangMinus_lexer.mll
+	src/lang/LangMinus_lexer.mll \
+	src/lang/LangMuriel_lexer.mll
 PARSERS = \
 	src/lang/LangFalse_parser.mly \
 	src/lang/LangKipple_parser.mly \
 	src/lang/LangUnlambda_parser.mly \
-	src/lang/LangMinus_parser.mly
+	src/lang/LangMinus_parser.mly \
+	src/lang/LangMuriel_parser.mly
 
 LEXER_SRCS = $(patsubst %.mll,%.ml,$(LEXERS))
 PARSER_SRCS = $(patsubst %.mly,%.ml,$(PARSERS))

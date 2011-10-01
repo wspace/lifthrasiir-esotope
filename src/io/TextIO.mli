@@ -67,6 +67,8 @@ class virtual text_io : object
     (* Reads one integer as a big_int, optionally showing a prompt to the
      * user. Other details are same to get_big_nat. *)
     method virtual get_big_int : string option -> Big_int.big_int option
+    (* Reads *all* remaining input as a string. *)
+    method virtual get_all : unit -> string
 
     (* Ensures that the internal output state of the IO object is processed and
      * updated back to the initial state. *)
@@ -99,6 +101,7 @@ class byte_io : in_channel -> out_channel -> object
     method get_int : string option -> int option
     method get_big_nat : string option -> Big_int.big_int option
     method get_big_int : string option -> Big_int.big_int option
+    method get_all : unit -> string
 
     method flush_out : unit -> unit
     method flush_in : unit -> unit

@@ -23,6 +23,7 @@ class virtual text_io = object
     method virtual get_int : string option -> int option
     method virtual get_big_nat : string option -> Big_int.big_int option
     method virtual get_big_int : string option -> Big_int.big_int option
+    method virtual get_all : unit -> string
 
     method virtual flush_out : unit -> unit
     method virtual flush_in : unit -> unit
@@ -166,6 +167,22 @@ class byte_io inchan outchan = object (self)
             | Some _ -> skip false
             | None -> None
         in self#prompt p; skip false
+
+    method get_all () =
+        let rec loop s i bufsize =
+            if i == bufsize then begin
+                let bufsize' = bufsize * 2 in
+                let s' = String.create bufsize' in
+                String.blit s 0 s' 0 bufsize; loop s' i bufsize'
+            end else begin
+                let ret = input inchan s i (bufsize-i) in
+                if ret == 0 then String.sub s 0 i else loop s (i+ret) bufsize
+            end in
+        let bufsize = 4096 in
+        let s = String.create bufsize in
+        match !lookahead with
+        | Some c -> lookahead := None; s.[0] <- c; loop s 1 bufsize
+        | None -> loop s 0 bufsize
 
     method flush_out () = flush outchan
 
