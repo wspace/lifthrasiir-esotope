@@ -1,7 +1,5 @@
 (* This is a part of Esotope. See README for more information. *)
 
-open EsotopeCommon
-
 (**************************************************************************)
 (* Signatures. *)
 
@@ -158,12 +156,10 @@ module Space2D = Make(struct
     let zero = (0, 0)
 
     let to_block_size (x,y) =
-        let log2up v =
-            let rec loop i v = if v > 0 then loop (succ i) (v lsr 1) else i in
-            loop 0 (pred v) in
-        let (xshift,yshift) = (log2up x, log2up y) in
-        if xshift < 1 || yshift < 1 then invalid_arg "too small block size";
-        ((xshift, yshift), ((1 lsl xshift) - 1, (1 lsl yshift) - 1))
+        if x <= 1 || y <= 1 then invalid_arg "too small block size";
+        let (xsz,ysz) = (BitUtil.next_pow2 x, BitUtil.next_pow2 y) in
+        let (xshift,yshift) = (BitUtil.log2_pow2 xsz, BitUtil.log2_pow2 ysz) in
+        ((xshift, yshift), (xsz - 1, ysz - 1))
 
     let block_length ((xshift,yshift),_) = 1 lsl (xshift + yshift)
 

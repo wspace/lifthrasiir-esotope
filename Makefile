@@ -8,7 +8,7 @@ OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC = ocamlyacc
 
-DIRS = -I src -I src/io -I src/type -I src/lang
+DIRS = -I src -I src/util -I src/io -I src/type -I src/lang
 INCS = 
 LIBS = nums.cmxa str.cmxa
 
@@ -17,6 +17,7 @@ SRCS = \
 	src/ListUtil.ml \
 	src/StreamUtil.ml \
 	src/UnicodeUtil.ml \
+	src/util/BitUtil.ml \
 	src/EsotopeCommon.ml \
 	src/type/Stack.ml \
 	src/type/Queue.ml \
@@ -61,6 +62,7 @@ INTFS = \
 	src/ListUtil.mli \
 	src/StreamUtil.mli \
 	src/UnicodeUtil.mli \
+	src/util/BitUtil.mli \
 	src/EsotopeCommon.mli \
 	src/type/Stack.mli \
 	src/type/Queue.mli \
