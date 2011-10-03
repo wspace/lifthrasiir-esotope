@@ -141,6 +141,7 @@ end
 (**************************************************************************)
 (* The Brainfuck-to-Minus transformer. *)
 
+(* TODO should be LangNormalizedBrainfuck... *)
 module BF = LangBrainfuckWithExit
 
 let from_spoon = object
@@ -184,32 +185,27 @@ let from_spoon = object
         in
 
         let rec process' = function
-            | BF.AdjustMemory (target, delta) ->
-                (adjust MemPtr (2*target)) ^^
+            | BF.AdjustMemory (ref,delta) ->
+                (adjust MemPtr (2*ref)) ^^
                 (adjust vA delta) ^^
-                (adjust MemPtr (-2*target))
-            | BF.SetMemory (target, value) ->
-                (adjust MemPtr (2*target)) ^^
-                (1, fun code -> Subtract (vA,vA) :: code) ^^
-                (adjust vA value) ^^
-                (adjust MemPtr (-2*target))
-            | BF.MovePointer offset ->
-                (adjust MemPtr (2*offset))
-            | BF.Input target ->
-                (adjust MemPtr (2*target)) ^^
+                (adjust MemPtr (-2*ref))
+            | BF.MovePointer off ->
+                (adjust MemPtr (2*off))
+            | BF.Input ref ->
+                (adjust MemPtr (2*ref)) ^^
                 (4, fun code -> Subtract (va,va) ::
                                 Subtract (va,InputChar) ::
                                 Subtract (vA,vA) ::
                                 Subtract (vA,va) :: code) ^^
-                (adjust MemPtr (-2*target))
-            | BF.Output target ->
-                (adjust MemPtr (2*target)) ^^
+                (adjust MemPtr (-2*ref))
+            | BF.Output ref ->
+                (adjust MemPtr (2*ref)) ^^
                 (3, fun code -> Subtract (va,va) ::
                                 Subtract (va,vA) ::
                                 Subtract (OutputChar,va) :: code) ^^
-                (adjust MemPtr (-2*target))
-            | BF.While (target, nodes) ->
-                let nodes' = List.map process' nodes in
+                (adjust MemPtr (-2*ref))
+            | BF.While (ref,body) ->
+                let nodes' = List.map process' body in
                 let n, f = List.fold_left (^^) (0, fun code -> code) nodes' in
                 (12, fun code -> Subtract (va,va) ::
                                  Subtract (va,vA) ::

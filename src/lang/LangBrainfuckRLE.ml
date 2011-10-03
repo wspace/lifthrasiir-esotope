@@ -118,16 +118,12 @@ let writer = object
         let rec emit nodes =
             let emit_node = function
                 | BF.Nop -> ()
-                | BF.AdjustMemory (ref, delta) ->
+                | BF.AdjustMemory (ref,delta) ->
                     emit_dir '>' '<' ref; (* empty when ref=0 *)
                     emit_dir '+' '-' delta;
                     emit_dir '<' '>' ref (* back up *)
-                | BF.SetMemory (ref, value) ->
-                    emit_dir '>' '<' ref;
-                    Buffer.add_string buf "[-]"; emit_dir '+' '-' value;
-                    emit_dir '<' '>' ref
-                | BF.MovePointer offset ->
-                    emit_dir '>' '<' offset
+                | BF.MovePointer off ->
+                    emit_dir '>' '<' off
                 | BF.Input ref ->
                     emit_dir '>' '<' ref;
                     Buffer.add_char buf ',';
@@ -136,10 +132,10 @@ let writer = object
                     emit_dir '>' '<' ref;
                     Buffer.add_char buf '.';
                     emit_dir '<' '>' ref
-                | BF.While (ref, nodes) ->
+                | BF.While (ref,body) ->
                     (* this is safe even when the pointer is updated. *)
                     emit_dir '>' '<' ref; Buffer.add_char buf '[';
-                    emit_dir '<' '>' ref; emit nodes; emit_dir '>' '<' ref;
+                    emit_dir '<' '>' ref; emit body; emit_dir '>' '<' ref;
                     Buffer.add_char buf ']'; emit_dir '<' '>' ref
                 | BF.Breakpoint ->
                     Buffer.add_char buf '#'

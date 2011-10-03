@@ -68,9 +68,9 @@ let reader = object
                 | Some '.' -> parse (BF.Output 0 :: acc)
                 | Some ',' -> parse (BF.Input 0 :: acc)
                 | Some '[' ->
-                    let nodes, eof = parse [] in
+                    let body, eof = parse [] in
                     if eof then failwith "no matching '0011'" else
-                    parse (BF.While (0, nodes) :: acc)
+                    parse (BF.While (0, body) :: acc)
                 | Some ']' -> (List.rev acc, false)
                 | Some '#' -> parse (BF.Breakpoint :: acc)
                 | Some '@' -> parse (BF.Exit :: acc)
@@ -123,13 +123,8 @@ let writer = object
                     emit_dir "010" "011" ref;
                     emit_dir "1" "000" delta;
                     emit_dir "011" "010" ref
-                | BF.SetMemory (ref, value) ->
-                    emit_dir "010" "011" ref;
-                    Buffer.add_string buf "001000000011";
-                    emit_dir "1" "000" value;
-                    emit_dir "011" "010" ref
-                | BF.MovePointer offset ->
-                    emit_dir "010" "011" offset
+                | BF.MovePointer off ->
+                    emit_dir "010" "011" off
                 | BF.Input ref ->
                     emit_dir "010" "011" ref;
                     Buffer.add_string buf "0010110";
@@ -138,9 +133,9 @@ let writer = object
                     emit_dir "010" "011" ref;
                     Buffer.add_string buf "001010";
                     emit_dir "011" "010" ref
-                | BF.While (ref, nodes) ->
+                | BF.While (ref,body) ->
                     emit_dir "010" "011" ref; Buffer.add_string buf "00100";
-                    emit_dir "011" "010" ref; emit nodes; emit_dir "010" "011" ref;
+                    emit_dir "011" "010" ref; emit body; emit_dir "010" "011" ref;
                     Buffer.add_string buf "0011"; emit_dir "011" "010" ref
                 | BF.Breakpoint ->
                     Buffer.add_string buf "00101110"

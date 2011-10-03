@@ -13,7 +13,6 @@ module BF = LangBrainfuck
 type ('memref, 'celltype) node =
     | Nop
     | AdjustMemory of 'memref * 'celltype
-    | SetMemory of 'memref * 'celltype
     | MovePointer of 'memref
     | Input of 'memref
     | Output of 'memref
@@ -25,23 +24,21 @@ type ('memref, 'celltype) node =
 let rec node_of_brainfuck = function
     | BF.Nop -> Nop
     | BF.AdjustMemory (ref,delta) -> AdjustMemory (ref,delta)
-    | BF.SetMemory (ref,value) -> SetMemory (ref,value)
     | BF.MovePointer ref -> MovePointer ref
     | BF.Input ref -> Input ref
     | BF.Output ref -> Output ref
-    | BF.While (ref,nodes) -> While (ref, List.map node_of_brainfuck nodes)
+    | BF.While (ref,body) -> While (ref, List.map node_of_brainfuck body)
     | BF.Breakpoint -> Breakpoint
     | BF.Comment s -> Comment s
 
 let rec brainfuck_of_node handle_exit = function
     | Nop -> BF.Nop
     | AdjustMemory (ref,delta) -> BF.AdjustMemory (ref,delta)
-    | SetMemory (ref,value) -> BF.SetMemory (ref,value)
     | MovePointer ref -> BF.MovePointer ref
     | Input ref -> BF.Input ref
     | Output ref -> BF.Output ref
-    | While (ref,nodes) ->
-        BF.While (ref, List.map (brainfuck_of_node handle_exit) nodes)
+    | While (ref,body) ->
+        BF.While (ref, List.map (brainfuck_of_node handle_exit) body)
     | Breakpoint -> BF.Breakpoint
     | Exit -> handle_exit ()
     | Comment s -> BF.Comment s
@@ -64,17 +61,15 @@ let interpreter = object
     method process nodes io =
         let mem = Array.make 30000 0 in
         let ptr = ref 0 in
-        let normalize x = if x < 0 then 256 + (x mod 256) else x mod 256 in
+        let normalize x = x land 255 in
         let rec exec = function
             | [] -> ()
             | h::t -> match h with
-                | AdjustMemory (ref, delta) ->
+                | AdjustMemory (ref,delta) ->
                     mem.(!ptr + ref) <- normalize (mem.(!ptr + ref) + delta);
                     exec t
-                | SetMemory (ref, value) ->
-                    mem.(!ptr + ref) <- normalize value; exec t
-                | MovePointer offset ->
-                    ptr := !ptr + offset; exec t
+                | MovePointer off ->
+                    ptr := !ptr + off; exec t
                 | Input ref ->
                     begin match io#get_code None with
                     | Some x -> mem.(!ptr + ref) <- x
@@ -82,10 +77,10 @@ let interpreter = object
                     end; exec t
                 | Output ref ->
                     io#put_code mem.(!ptr + ref); io#flush_out (); exec t
-                | While (ref, nodes) ->
-                    while mem.(!ptr + ref) <> 0 do exec nodes done; exec t
+                | While (ref,body) ->
+                    while mem.(!ptr + ref) <> 0 do exec body done; exec t
                 | Breakpoint -> (* TODO *)
-                    prerr_endline "Breakpoint reached."; exec t
+                    () (*prerr_endline "Breakpoint reached."*); exec t
                 | Exit -> ()
                 | Nop | Comment _ -> exec t
         in exec nodes
@@ -103,7 +98,7 @@ let to_brainfuck = object
         let rec has_unsafe_exit topmost nodes =
             let check = function
                 | Exit -> true
-                | While (_,nodes) -> has_unsafe_exit false nodes
+                | While (_,body) -> has_unsafe_exit false body
                 | _ -> false in
             let reduce (prior, prev) cur = (prior || prev, check cur) in
             let others, last = List.fold_left reduce (false,false) nodes in

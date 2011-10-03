@@ -19,7 +19,6 @@
 type ('memref, 'celltype) node =
     | Nop
     | AdjustMemory of 'memref * 'celltype
-    | SetMemory of 'memref * 'celltype
     | MovePointer of 'memref
     | Input of 'memref
     | Output of 'memref
@@ -67,9 +66,9 @@ let reader = object
 
             | Some '[' ->
                 Stream.junk stream;
-                let nodes, eof = parse [] in
+                let body, eof = parse [] in
                 if eof then failwith "no matching ']'" else
-                parse (While (0, nodes) :: acc)
+                parse (While (0, body) :: acc)
             | Some ']' -> Stream.junk stream; (List.rev acc, false)
             | None -> (List.rev acc, true)
 
@@ -105,15 +104,13 @@ let interpreter = object
     method process nodes io =
         let mem = Array.make 30000 0 in
         let ptr = ref 0 in
-        let normalize x = if x < 0 then 256 + (x mod 256) else x mod 256 in
+        let normalize x = x land 255 in
         let rec exec nodes =
             let exec_node = function
-                | AdjustMemory (ref, delta) ->
+                | AdjustMemory (ref,delta) ->
                     mem.(!ptr + ref) <- normalize (mem.(!ptr + ref) + delta)
-                | SetMemory (ref, value) ->
-                    mem.(!ptr + ref) <- normalize value
-                | MovePointer offset ->
-                    ptr := !ptr + offset
+                | MovePointer off ->
+                    ptr := !ptr + off
                 | Input ref ->
                     begin match io#get_code None with
                     | Some x -> mem.(!ptr + ref) <- x
@@ -121,8 +118,8 @@ let interpreter = object
                     end
                 | Output ref ->
                     io#put_code mem.(!ptr + ref); io#flush_out ()
-                | While (ref, nodes) ->
-                    while mem.(!ptr + ref) <> 0 do exec nodes done
+                | While (ref,body) ->
+                    while mem.(!ptr + ref) <> 0 do exec body done
                 | Breakpoint -> (* TODO *)
                     () (*prerr_endline "Breakpoint reached."*)
                 | Nop | Comment _ -> ()
@@ -147,16 +144,12 @@ let writer = object
         let rec emit nodes =
             let emit_node = function
                 | Nop -> ()
-                | AdjustMemory (ref, delta) ->
+                | AdjustMemory (ref,delta) ->
                     emit_dir '>' '<' ref; (* empty when ref=0 *)
                     emit_dir '+' '-' delta;
                     emit_dir '<' '>' ref (* back up *)
-                | SetMemory (ref, value) ->
-                    emit_dir '>' '<' ref;
-                    Buffer.add_string buf "[-]"; emit_dir '+' '-' value;
-                    emit_dir '<' '>' ref
-                | MovePointer offset ->
-                    emit_dir '>' '<' offset
+                | MovePointer off ->
+                    emit_dir '>' '<' off
                 | Input ref ->
                     emit_dir '>' '<' ref;
                     Buffer.add_char buf ',';
@@ -165,10 +158,10 @@ let writer = object
                     emit_dir '>' '<' ref;
                     Buffer.add_char buf '.';
                     emit_dir '<' '>' ref
-                | While (ref, nodes) ->
+                | While (ref,body) ->
                     (* this is safe even when the pointer is updated. *)
                     emit_dir '>' '<' ref; Buffer.add_char buf '[';
-                    emit_dir '<' '>' ref; emit nodes; emit_dir '>' '<' ref;
+                    emit_dir '<' '>' ref; emit body; emit_dir '>' '<' ref;
                     Buffer.add_char buf ']'; emit_dir '<' '>' ref
                 | Breakpoint ->
                     Buffer.add_char buf '#'
@@ -199,7 +192,8 @@ let from_text = object
             let delta = nearest_to_zero (ch - !last) in
             let deltazero = nearest_to_zero ch in
             if (abs deltazero) + 3 < abs delta then
-                nodes := SetMemory (0, deltazero) :: !nodes
+                nodes := AdjustMemory (0, deltazero) ::
+                         While (0, [AdjustMemory (0, -1)]) :: !nodes
             else
                 nodes := AdjustMemory (0, delta) :: !nodes;
             nodes := Output 0 :: !nodes;
@@ -221,8 +215,6 @@ let to_c = object
                 | Nop -> ()
                 | AdjustMemory (target, delta) ->
                     Printf.bprintf buf "%sp[%d] += %d;\n" indent target delta
-                | SetMemory (target, value) ->
-                    Printf.bprintf buf "%sp[%d] = %d;\n" indent target value
                 | MovePointer offset ->
                     Printf.bprintf buf "%sp += %d;\n" indent offset
                 | Input target ->

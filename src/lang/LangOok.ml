@@ -75,8 +75,8 @@ end
 (* The code writer. *)
 
 let rec strip_comment = function
-    | LangBrainfuck.While (ref, nodes) ->
-        LangBrainfuck.While (ref, List.map strip_comment nodes)
+    | LangBrainfuck.While (ref,body) ->
+        LangBrainfuck.While (ref, List.map strip_comment body)
     | LangBrainfuck.Breakpoint -> LangBrainfuck.Nop  (* TODO *)
     | LangBrainfuck.Comment _ -> LangBrainfuck.Nop
     | node -> node
