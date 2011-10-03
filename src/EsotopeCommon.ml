@@ -123,6 +123,12 @@ let buffer_kind = object
     method name = "buffer"
 end
 
+type formatter_type = Format.formatter -> unit
+let formatter_kind = object
+    inherit [formatter_type] kind
+    method name = "formatter"
+end
+
 type interp_type = unit
 let interp_kind = object
     inherit [interp_type] kind
@@ -170,6 +176,10 @@ end
 
 class virtual ['src] writer inkind = object
     inherit ['src,buffer_type] processor inkind buffer_kind
+end
+
+class virtual ['src] inspector inkind = object
+    inherit ['src,formatter_type] processor inkind formatter_kind
 end
 
 class virtual ['src] interpreter inkind = object

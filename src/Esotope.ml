@@ -10,6 +10,7 @@ type cmdflags =
      mutable tokind : string;
      mutable fromfile : string;
      mutable tofile : string option;
+     mutable inspect : bool;
      mutable textio : TextIO.text_io;
      mutable verbose : bool}
 
@@ -19,6 +20,7 @@ let parse_args =
                   tokind = "interp";
                   fromfile = "-";
                   tofile = None;
+                  inspect = false;
                   textio = TextIO.byte_stdio;
                   verbose = false} in
     Arg.parse [("-f", Arg.String (fun x -> result.fromkind <- x),
@@ -32,6 +34,10 @@ let parse_args =
                  processed.");
                ("-o", Arg.String (fun x -> result.tofile <- Some x),
                 "Output file.");
+               ("-I", Arg.Unit (fun () -> result.inspect <- true),
+                "Inspects the resulting language. This is useful for \
+                 debugging, but may not be a format that can be read by \
+                 Esotope.");
                ("-U", Arg.Unit (fun () -> result.textio <- TextIO.unicode_stdio),
                 "Enables the Unicode output whenever possible. Every \
                  \"character code\" is interpreted as Unicode code points.");
@@ -65,11 +71,13 @@ let display_procs procs =
         num_proc sum_weights first_kind remaining_kinds;
     flush stderr
 
-let build_procs fromkind tokind =
+let build_procs fromkind tokind inspect =
     let procs = find_procs stream_kind fromkind @
                 find_procs fromkind tokind in
     if tokind = interp_kind then
         procs
+    else if inspect then
+        procs @ find_procs tokind formatter_kind
     else
         procs @ find_procs tokind buffer_kind
 
@@ -103,7 +111,7 @@ let process result =
         else
             lookup_kind result.fromkind in
     let tokind = lookup_kind result.tokind in
-    let procs = build_procs fromkind tokind in
+    let procs = build_procs fromkind tokind result.inspect in
     if result.verbose then display_procs procs;
     TextIO.current_text_io := result.textio;
     if tokind = interp_kind then
@@ -113,9 +121,15 @@ let process result =
             match result.tofile with
             | Some s -> open_out_bin s
             | None -> stdout in
-        let buf = Buffer.create 1024 in
-        (run stream stream_kind procs buffer_kind : buffer_type) buf;
-        Buffer.output_buffer outchan buf
+        if result.inspect then begin
+            let ff = Format.formatter_of_out_channel outchan in
+            (run stream stream_kind procs formatter_kind : formatter_type) ff;
+            Format.fprintf ff "@."
+        end else begin
+            let buf = Buffer.create 1024 in
+            (run stream stream_kind procs buffer_kind : buffer_type) buf;
+            Buffer.output_buffer outchan buf
+        end
 
 let _ =
     let result = parse_args in

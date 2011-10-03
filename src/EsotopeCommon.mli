@@ -128,6 +128,12 @@ val unicode_stream_kind : unicode_stream_type kind
 type buffer_type = Buffer.t -> unit
 val buffer_kind : buffer_type kind
 
+(* A kind for formatter (as defined in Format standard module). Like
+ * buffer_type it is not the formatter itself but a function that writes to
+ * given formatter. *)
+type formatter_type = Format.formatter -> unit
+val formatter_kind : formatter_type kind
+
 (* A (sort-of-a) kind for forcing the execution. *)
 type interp_type = unit
 val interp_kind : interp_type kind
@@ -171,6 +177,14 @@ end
  * function, which receives the output buffer and writes to it. *)
 class virtual ['src] writer : 'src kind -> object
     inherit ['src,buffer_type] processor
+end
+
+(* Inspector. It is similar to the stream writer but generally used for
+ * inspecting internal representation of the kind, and enabled when using -I
+ * switch. The process method returns a function which receives the output
+ * formatter (instead of a buffer). *)
+class virtual ['src] inspector : 'src kind -> object
+    inherit ['src,formatter_type] processor
 end
 
 (* Interpreter. It is a special case of processor and should execute given
