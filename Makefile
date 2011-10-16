@@ -18,10 +18,11 @@ SRCS = \
 	src/StreamUtil.ml \
 	src/UnicodeUtil.ml \
 	src/util/BitUtil.ml \
-	src/EsotopeCommon.ml \
 	src/type/Stack.ml \
 	src/type/Queue.ml \
+	src/type/PriorityQueue.ml \
 	src/type/Space.ml \
+	src/EsotopeCommon.ml \
 	src/io/TextIO.ml \
 	src/lang/LangText.ml \
 	src/lang/LangBrainfuck.ml \
@@ -63,10 +64,11 @@ INTFS = \
 	src/StreamUtil.mli \
 	src/UnicodeUtil.mli \
 	src/util/BitUtil.mli \
-	src/EsotopeCommon.mli \
 	src/type/Stack.mli \
 	src/type/Queue.mli \
+	src/type/PriorityQueue.mli \
 	src/type/Space.mli \
+	src/EsotopeCommon.mli \
 	src/io/TextIO.mli \
 	src/lang/LangFalse_parser.mli \
 	src/lang/LangKipple_parser.mli \

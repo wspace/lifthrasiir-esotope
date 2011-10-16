@@ -195,7 +195,7 @@ class virtual ['src] interpreter : 'src kind -> object
 end
 
 (**************************************************************************)
-(* Lookup interface and driver. *)
+(* Lookup interface. *)
 
 (* Searches the kind for given name. Raises Not_found if there is no such
  * kind. *)
@@ -209,10 +209,19 @@ val lookup_extension : string -> kind_base
  * if there is no such processor. *)
 val lookup_proc : kind_base -> kind_base -> processor_base
 
+(**************************************************************************)
+(* Driver. *)
+
+(* Specifies a constraint imposed on processors returned by `find_procs`. *)
+type proc_constraint =
+    | OptLevel of int           (* only uses procs that `proc#optlevel <= x` *)
+
 (* Automatically builds the connection of processors with minimal sum of
- * weights. Raises Not_found if there exists no path that connects two given
- * kinds. *)
-val find_procs : kind_base -> kind_base -> processor_base list
+ * weights, given constraints. (Processors that do not satisfy these constraints
+ * are ignored from the calculation.) Raises Not_found if there exists no path
+ * that connects two given kinds. *)
+val find_procs : proc_constraint list -> kind_base -> kind_base ->
+                 processor_base list
 
 (* The connection driver. *)
 val run : 'src -> 'src kind -> processor_base list -> 'dest kind -> 'dest

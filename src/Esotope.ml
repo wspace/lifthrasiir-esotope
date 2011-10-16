@@ -72,14 +72,14 @@ let display_procs procs =
     flush stderr
 
 let build_procs fromkind tokind inspect =
-    let procs = find_procs stream_kind fromkind @
-                find_procs fromkind tokind in
+    let procs = find_procs [] stream_kind fromkind @
+                find_procs [] fromkind tokind in
     if tokind = interp_kind then
         procs
     else if inspect then
-        procs @ find_procs tokind formatter_kind
+        procs @ find_procs [] tokind formatter_kind
     else
-        procs @ find_procs tokind buffer_kind
+        procs @ find_procs [] tokind buffer_kind
 
 let guess_kind fn verbose =
     try
