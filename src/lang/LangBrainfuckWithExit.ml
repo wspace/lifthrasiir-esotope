@@ -9,6 +9,7 @@
 ***************************************************************************)
 
 module BF = LangBrainfuck
+module IR = LangBrainfuckIR
 
 type ('memref, 'celltype) node =
     | Nop
@@ -53,37 +54,27 @@ let kind = object
 end
 
 (**************************************************************************)
-(* The interpreter. *)
+(* The transformer to Brainfuck IR. *)
 
-let interpreter = object
-    inherit [t] TextIO.interpreter kind
+let to_ir = object
+    inherit [t, IR.t] EsotopeCommon.processor kind IR.kind
 
-    method process nodes io =
-        let mem = Array.make 30000 0 in
-        let ptr = ref 0 in
-        let normalize x = x land 255 in
-        let rec exec = function
-            | [] -> ()
-            | h::t -> match h with
-                | AdjustMemory (ref,delta) ->
-                    mem.(!ptr + ref) <- normalize (mem.(!ptr + ref) + delta);
-                    exec t
-                | MovePointer off ->
-                    ptr := !ptr + off; exec t
-                | Input ref ->
-                    begin match io#get_code None with
-                    | Some x -> mem.(!ptr + ref) <- x
-                    | None -> ()
-                    end; exec t
-                | Output ref ->
-                    io#put_code mem.(!ptr + ref); io#flush_out (); exec t
-                | While (ref,body) ->
-                    while mem.(!ptr + ref) <> 0 do exec body done; exec t
-                | Breakpoint -> (* TODO *)
-                    () (*prerr_endline "Breakpoint reached."*); exec t
-                | Exit -> ()
-                | Nop | Comment _ -> exec t
-        in exec nodes
+    (* so BF -> BF w/ Exit -> IR has the same weight with BF -> IR *)
+    method weight = 9
+
+    method process nodes =
+        let rec ir_of_node = function 
+            | Nop -> IR.Nop
+            | AdjustMemory (ref,delta) -> IR.AdjustMemory (ref,delta)
+            | MovePointer ref -> IR.MovePointer ref
+            | Input ref -> IR.Input ref
+            | Output ref -> IR.Output ref
+            | While (ref,body) ->
+                IR.While (ref, List.map ir_of_node body, Some 0)
+            | Exit -> IR.Exit
+            | Breakpoint -> IR.Breakpoint
+            | Comment s -> IR.Comment s
+        in List.map ir_of_node nodes
 end
 
 (**************************************************************************)
@@ -93,7 +84,6 @@ let to_brainfuck = object
     inherit [t, LangBrainfuck.t] EsotopeCommon.processor
         kind LangBrainfuck.kind
 
-    method weight = 5
     method process nodes =
         let rec has_unsafe_exit topmost nodes =
             let check = function
@@ -117,7 +107,7 @@ let from_brainfuck = object
     inherit [LangBrainfuck.t, t] EsotopeCommon.processor
         LangBrainfuck.kind kind
 
-    method weight = 5
+    method weight = 1
     method process nodes = List.map node_of_brainfuck nodes
 end
 

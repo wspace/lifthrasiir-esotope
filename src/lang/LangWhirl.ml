@@ -84,8 +84,7 @@ let interpreter = object
 
         let opsv = ref 0 in
         let mathv = ref 0 in
-        let mem = Array.make 30000 0 in (* TODO *)
-        let ptr = ref 0 in
+        let mem = Tape.create 4096 0 in
 
         let rec exec_zeroes side (v,w) (vr,wr) off next = function
             | 0 -> exec side (v,w) (vr,wr) off next
@@ -96,20 +95,20 @@ let interpreter = object
                 if side then begin (* math ring *)
                     match v with
                     |  0 -> continue ()
-                    |  1 -> mathv := mem.(!ptr); continue ()
-                    |  2 -> mem.(!ptr) <- !mathv; continue ()
-                    |  3 -> mathv := !mathv + mem.(!ptr); continue ()
-                    |  4 -> mathv := !mathv * mem.(!ptr); continue ()
-                    |  5 -> mathv := !mathv / mem.(!ptr); continue ()
+                    |  1 -> mathv := Tape.get 0 mem; continue ()
+                    |  2 -> Tape.set 0 !mathv mem; continue ()
+                    |  3 -> mathv := !mathv + Tape.get 0 mem; continue ()
+                    |  4 -> mathv := !mathv * Tape.get 0 mem; continue ()
+                    |  5 -> mathv := !mathv / Tape.get 0 mem; continue ()
                     |  6 -> mathv := 0; continue ()
                     |  7 ->
-                        mathv := if !mathv < mem.(!ptr) then 1 else 0;
+                        mathv := if !mathv < Tape.get 0 mem then 1 else 0;
                         continue ()
                     |  8 ->
-                        mathv := if !mathv > mem.(!ptr) then 1 else 0;
+                        mathv := if !mathv > Tape.get 0 mem then 1 else 0;
                         continue ()
                     |  9 ->
-                        mathv := if !mathv == mem.(!ptr) then 1 else 0;
+                        mathv := if !mathv == Tape.get 0 mem then 1 else 0;
                         continue ()
                     | 10 -> mathv := if !mathv == 0 then 1 else 0; continue ()
                     | 11 -> mathv := -(!mathv); continue ()
@@ -120,20 +119,21 @@ let interpreter = object
                     |  1 -> ()
                     |  2 -> opsv := 1; continue ()
                     |  3 -> opsv := 0; continue ()
-                    |  4 -> opsv := mem.(!ptr); continue ()
-                    |  5 -> mem.(!ptr) <- !opsv; continue ()
+                    |  4 -> opsv := Tape.get 0 mem; continue ()
+                    |  5 -> Tape.set 0 !opsv mem; continue ()
                     |  6 ->
                         (* when the 0 instruction triggers an operation, that
                          * operation takes place at *that* position and the
                          * program pointer advances (except for the jump). *)
                         let off' = off + !opsv + 1 in
                         exec (not side) (w,v) (wr,vr) off' (seek off')
-                    |  7 -> ptr := !ptr + !opsv; continue ()
+                    |  7 -> Tape.offset !opsv mem; continue ()
                     |  8 ->
-                        opsv := if !mathv != 0 && mem.(!ptr) != 0 then 1 else 0;
+                        opsv :=
+                            if !mathv != 0 && Tape.get 0 mem != 0 then 1 else 0;
                         continue ()
                     |  9 -> 
-                        if mem.(!ptr) == 0 then
+                        if Tape.get 0 mem == 0 then
                             continue ()
                         else
                             let off' = off + !opsv + 1 in
@@ -141,19 +141,19 @@ let interpreter = object
                     | 10 ->
                         if !opsv == 0 then begin
                             match io#get_int None with
-                            | Some v -> mem.(!ptr) <- v
+                            | Some v -> Tape.set 0 v mem
                             | None -> ()
                         end else begin
-                            io#put_int mem.(!ptr); io#flush_out ()
+                            io#put_int (Tape.get 0 mem); io#flush_out ()
                         end;
                         continue ()
                     | 11 ->
                         if !opsv == 0 then begin
                             match io#get_code None with
-                            | Some v -> mem.(!ptr) <- v
+                            | Some v -> Tape.set 0 v mem
                             | None -> ()
                         end else begin
-                            io#put_code mem.(!ptr); io#flush_out ()
+                            io#put_code (Tape.get 0 mem); io#flush_out ()
                         end;
                         continue ()
                     |  _ -> failwith "impossible"

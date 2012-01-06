@@ -16,6 +16,8 @@
  directly connected to the reader will produce a byte-identical result.
 ***************************************************************************)
 
+module IR = LangBrainfuckIR
+
 type ('memref, 'celltype) node =
     | Nop
     | AdjustMemory of 'memref * 'celltype
@@ -96,38 +98,6 @@ let reader = object
 end
 
 (**************************************************************************)
-(* The interpreter. *)
-
-let interpreter = object
-    inherit [t] TextIO.interpreter kind
-
-    method process nodes io =
-        let mem = Array.make 30000 0 in
-        let ptr = ref 0 in
-        let normalize x = x land 255 in
-        let rec exec nodes =
-            let exec_node = function
-                | AdjustMemory (ref,delta) ->
-                    mem.(!ptr + ref) <- normalize (mem.(!ptr + ref) + delta)
-                | MovePointer off ->
-                    ptr := !ptr + off
-                | Input ref ->
-                    begin match io#get_code None with
-                    | Some x -> mem.(!ptr + ref) <- x
-                    | None -> ()
-                    end
-                | Output ref ->
-                    io#put_code mem.(!ptr + ref); io#flush_out ()
-                | While (ref,body) ->
-                    while mem.(!ptr + ref) <> 0 do exec body done
-                | Breakpoint -> (* TODO *)
-                    () (*prerr_endline "Breakpoint reached."*)
-                | Nop | Comment _ -> ()
-            in List.iter exec_node nodes
-        in exec nodes
-end
-
-(**************************************************************************)
 (* The code writer. *)
 
 let writer = object
@@ -174,6 +144,28 @@ let writer = object
 end
 
 (**************************************************************************)
+(* The transformer to Brainfuck IR. *)
+
+let to_ir = object
+    inherit [t, IR.t] EsotopeCommon.processor kind IR.kind
+
+    method weight = 10
+
+    method process nodes =
+        let rec ir_of_node = function 
+            | Nop -> IR.Nop
+            | AdjustMemory (ref,delta) -> IR.AdjustMemory (ref,delta)
+            | MovePointer ref -> IR.MovePointer ref
+            | Input ref -> IR.Input ref
+            | Output ref -> IR.Output ref
+            | While (ref,body) ->
+                IR.While (ref, List.map ir_of_node body, Some 0)
+            | Breakpoint -> IR.Breakpoint
+            | Comment s -> IR.Comment s
+        in List.map ir_of_node nodes
+end
+
+(**************************************************************************)
 (* The text generator. *)
 
 let from_text = object
@@ -213,7 +205,7 @@ let to_c = object
         let rec emit' indent nodes =
             let rec emit_single_node indent node = match node with
                 | Nop -> ()
-                | AdjustMemory (target, delta) ->
+                | AdjustMemory (target,delta) ->
                     Printf.bprintf buf "%sp[%d] += %d;\n" indent target delta
                 | MovePointer offset ->
                     Printf.bprintf buf "%sp += %d;\n" indent offset
@@ -221,7 +213,7 @@ let to_c = object
                     Printf.bprintf buf "%sp[%d] = getchar();\n" indent target
                 | Output target ->
                     Printf.bprintf buf "%sputchar(p[%d]);\n" indent target
-                | While (target, nodes) ->
+                | While (target,nodes) ->
                     Printf.bprintf buf "%swhile (p[%d]) {\n" indent target;
                     emit' (indent ^ "\t") nodes;
                     Printf.bprintf buf "%s}\n" indent

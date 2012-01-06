@@ -59,6 +59,11 @@ class virtual processor_base : object
      * minimal sum of total weights is used. (Therefore it cannot be
      * negative.) The default weight is 10. *)
     method weight : int
+
+    (* When set, the processor is only available when the maximum optimization
+     * level (-O# options) is at least that value. Also used as a tie-breaker
+     * for distance calculation. *)
+    method optlevel : int
 end
 
 (**************************************************************************)

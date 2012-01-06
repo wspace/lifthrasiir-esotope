@@ -22,6 +22,7 @@ class virtual processor_base = object
     inherit source_base
 
     method weight = 10 (* default weight *)
+    method optlevel = 0 (* default optimization level *)
 end
 
 (**************************************************************************)
@@ -227,7 +228,27 @@ module PQ = PriorityQueue
 type proc_constraint =
     | OptLevel of int
 
+type constraints =
+    {maxoptlevel : int}
+
+let compute_constraints cs =
+    let rec compute c = function
+        | [] -> c
+        | OptLevel optlevel :: t ->
+            compute {c with maxoptlevel = max c.maxoptlevel optlevel} t
+    in compute {maxoptlevel = 0} cs
+
+let effective_weight c proc =
+    if proc#optlevel > c.maxoptlevel then
+        None
+    else
+        (* prefers an optimizing processor over a normal processor when
+         * the weight is same. *)
+        Some (proc#weight * 100 - proc#optlevel)
+
 let find_procs cs srckind destkind =
+    let c = compute_constraints cs in
+
     let visited = Hashtbl.create 8 in
     let dist = Hashtbl.create 8 in
     let queue = PQ.create () in
@@ -243,14 +264,17 @@ let find_procs cs srckind destkind =
                 Hashtbl.add visited v ();
                 let relax v' proc =
                     if not (Hashtbl.mem visited v') then begin
-                        let d = w + proc#weight in
-                        if
-                            try (d < Hashtbl.find dist v')
-                            with Not_found -> true
-                        then begin
-                            Hashtbl.replace dist v' d;
-                            PQ.add queue d (v', proc :: trace)
-                        end
+                        match effective_weight c proc with
+                        | None -> ()
+                        | Some w' ->
+                            let d = w + w' in
+                            if
+                                try (d < Hashtbl.find dist v')
+                                with Not_found -> true
+                            then begin
+                                Hashtbl.replace dist v' d;
+                                PQ.add queue d (v', proc :: trace)
+                            end
                     end
                 in Hashtbl.iter relax (Hashtbl.find processors v)
             end;

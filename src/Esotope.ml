@@ -12,6 +12,7 @@ type cmdflags =
      mutable tofile : string option;
      mutable inspect : bool;
      mutable textio : TextIO.text_io;
+     mutable optlevel : int;
      mutable verbose : bool}
 
 let parse_args =
@@ -22,6 +23,7 @@ let parse_args =
                   tofile = None;
                   inspect = false;
                   textio = TextIO.byte_stdio;
+                  optlevel = 0;
                   verbose = false} in
     Arg.parse [("-f", Arg.String (fun x -> result.fromkind <- x),
                 "Language translated from.");
@@ -38,6 +40,8 @@ let parse_args =
                 "Inspects the resulting language. This is useful for \
                  debugging, but may not be a format that can be read by \
                  Esotope.");
+               ("-O", Arg.Int (fun x -> result.optlevel <- x),
+                "Sets the maximum optimization level applicable.");
                ("-U", Arg.Unit (fun () -> result.textio <- TextIO.unicode_stdio),
                 "Enables the Unicode output whenever possible. Every \
                  \"character code\" is interpreted as Unicode code points.");
@@ -65,21 +69,23 @@ let display_procs procs =
     let sum_weights = List.fold_left (fun w p -> w + p#weight) 0 procs in
     let first_kind = (List.hd procs)#input_kind#name in
     let each_proc proc =
-        Printf.sprintf " --(%d)--> %s" proc#weight proc#output_kind#name in
+        " --(" ^ string_of_int proc#weight ^
+        (if proc#optlevel > 0 then " O" ^ string_of_int proc#optlevel else "") ^
+        ")--> " ^ proc#output_kind#name in
     let remaining_kinds = String.concat "" (List.map each_proc procs) in
     Printf.eprintf "Found a path with %d processors (weight=%d): %s%s\n"
         num_proc sum_weights first_kind remaining_kinds;
     flush stderr
 
-let build_procs fromkind tokind inspect =
-    let procs = find_procs [] stream_kind fromkind @
-                find_procs [] fromkind tokind in
+let build_procs cs fromkind tokind inspect =
+    let procs = find_procs cs stream_kind fromkind @
+                find_procs cs fromkind tokind in
     if tokind = interp_kind then
         procs
     else if inspect then
-        procs @ find_procs [] tokind formatter_kind
+        procs @ find_procs cs tokind formatter_kind
     else
-        procs @ find_procs [] tokind buffer_kind
+        procs @ find_procs cs tokind buffer_kind
 
 let guess_kind fn verbose =
     try
@@ -111,7 +117,8 @@ let process result =
         else
             lookup_kind result.fromkind in
     let tokind = lookup_kind result.tokind in
-    let procs = build_procs fromkind tokind result.inspect in
+    let cs = [OptLevel result.optlevel] in
+    let procs = build_procs cs fromkind tokind result.inspect in
     if result.verbose then display_procs procs;
     TextIO.current_text_io := result.textio;
     if tokind = interp_kind then
