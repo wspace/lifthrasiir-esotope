@@ -6,7 +6,7 @@
  This module implements a particular run-length encoding for the Brainfuck
  programming language (implemented as LangBrainfuck in Esotope). There are
  many such encodings, but Esotope chose to implement an encoding used by
- gcc-bf because there is very low change that the typical Brainfuck code
+ gcc-bf because there is very low chance that the typical Brainfuck code
  contains a run-length sequence used by this encoding, unlike others.
 
  The encoding uses +*<count>, -*<count>, <*<count>, >*<count> for <count>
